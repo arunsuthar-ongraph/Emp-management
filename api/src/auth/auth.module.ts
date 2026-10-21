@@ -62,6 +62,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       role: user.role,
+      avatarUrl: user.avatarUrl,
       permissions: ROLE_PERMISSIONS[user.role],
       // Leads people (reporting manager or department head) → sees approvals and team views
       isLead: await this.hierarchy.isLead(user.tenantId || '', user.employeeId),

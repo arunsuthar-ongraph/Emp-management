@@ -16,6 +16,9 @@ class EmployeeDto {
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() gender?: string;
   @IsOptional() @IsDateString() dob?: string;
+  @IsOptional() @IsString() address?: string;
+  @IsOptional() @IsString() emergencyName?: string;
+  @IsOptional() @IsString() emergencyPhone?: string;
   @IsDateString() joiningDate: string;
   @IsOptional() @IsString() departmentId?: string;
   @IsOptional() @IsString() designationId?: string;
@@ -55,7 +58,7 @@ const include = {
   department: true,
   designation: true,
   manager: { select: { id: true, firstName: true, lastName: true } },
-  user: { select: { id: true, role: true, isActive: true } },
+  user: { select: { id: true, role: true, isActive: true, avatarUrl: true } },
 } satisfies Prisma.EmployeeInclude;
 
 @Injectable()

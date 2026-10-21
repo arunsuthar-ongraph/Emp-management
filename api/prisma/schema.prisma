@@ -82,6 +82,7 @@ model User {
   passwordHash String
   role         Role      @default(EMPLOYEE)
   isActive     Boolean   @default(true)
+  avatarUrl    String? // e.g. /api/uploads/avatars/<uuid>.jpg
   employeeId   String?   @unique
   employee     Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   createdAt    DateTime  @default(now())
@@ -127,6 +128,9 @@ model Employee {
   phone         String?
   gender        String?
   dob           DateTime?      @db.Date
+  address       String?
+  emergencyName  String?
+  emergencyPhone String?
   joiningDate   DateTime       @db.Date
   exitDate      DateTime?      @db.Date
   status        EmployeeStatus @default(ACTIVE)
@@ -251,11 +255,29 @@ model Attendance {
   date        DateTime         @db.Date
   clockIn     DateTime?
   clockOut    DateTime?
+  // Day summary: clockIn = first check-in, clockOut = last check-out (null while checked in),
+  // workMinutes = total of all completed sessions.
   workMinutes Int              @default(0)
   status      AttendanceStatus @default(PRESENT)
+  sessions    AttendanceSession[]
 
   @@unique([employeeId, date])
   @@index([tenantId, date])
+}
+
+/** One check-in → check-out pair. A day can have many (breaks, client visits, split shifts). */
+model AttendanceSession {
+  id           String     @id @default(uuid())
+  tenantId     String
+  attendanceId String
+  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  employeeId   String
+  clockIn      DateTime
+  clockOut     DateTime? // null = currently checked in
+  minutes      Int        @default(0)
+
+  @@index([employeeId, clockOut])
+  @@index([attendanceId])
 }
 
 model PayrollRun {

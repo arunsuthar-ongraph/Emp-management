@@ -72,6 +72,6 @@ export const STATUS_COLOR: Record<string, string> = {
   UNPAID_LEAVE: 'volcano',
   HOLIDAY: 'purple',
   WEEKEND: 'default',
-  UPCOMING: 'default',
+  NOT_MARKED: 'cyan',
   NOT_EMPLOYED: 'default',
 };

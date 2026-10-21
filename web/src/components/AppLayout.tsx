@@ -12,6 +12,7 @@ import {
   LogoutOutlined,
   SettingOutlined,
   TeamOutlined,
+  UserOutlined,
   WalletOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../auth';
@@ -81,12 +82,13 @@ export default function AppLayout() {
               items: [
                 { key: 'email', label: user?.email, disabled: true },
                 { type: 'divider' },
+                { key: 'profile', label: 'My Profile', icon: <UserOutlined />, onClick: () => navigate('/profile') },
                 { key: 'logout', label: 'Logout', icon: <LogoutOutlined />, danger: true, onClick: logout },
               ],
             }}
           >
             <Space style={{ cursor: 'pointer' }}>
-              <Avatar style={{ background: '#4f46e5' }}>{name.charAt(0).toUpperCase()}</Avatar>
+              <Avatar src={user?.avatarUrl || undefined} style={{ background: '#4f46e5' }}>{name.charAt(0).toUpperCase()}</Avatar>
               {screens.md && (
                 <>
                   <span>{name}</span>

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { PrismaClient, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 import { createTenantDefaults } from '../src/common/tenant-defaults';
 import { addDays, eachDay, isWeekend, monthRange, todayIST } from '../src/common/dates';
 import { AuthUser } from '../src/common/auth';
@@ -128,9 +129,11 @@ async function main() {
   await prisma.holiday.createMany({ data: holidays.map(([name, m, d]) => ({ tenantId: tenant.id, name, date: new Date(Date.UTC(year, m - 1, d)) })) });
   const holidaySet = new Set(holidays.map(([, m, d]) => new Date(Date.UTC(year, m - 1, d)).getTime()));
 
-  // Attendance: two previous months + this month until yesterday
+  // Attendance: two previous months + this month until yesterday.
+  // Most days have two sessions (lunch break), some have one; the day row is the summary.
   const from = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 2, 1));
   const rows = [];
+  const sessions = [];
   for (const id of Object.values(emp)) {
     for (const d of eachDay(from, addDays(today, -1))) {
       if (isWeekend(d) || holidaySet.has(d.getTime())) continue;
@@ -139,13 +142,23 @@ async function main() {
       const inMin = 9 * 60 + Math.floor(rand() * 60) - 330; // 9:00–10:00 IST, stored as UTC
       const worked = roll < 0.07 ? 4 * 60 + Math.floor(rand() * 60) : 8 * 60 + Math.floor(rand() * 90);
       const clockIn = new Date(d.getTime() + inMin * 60000);
+      const attendanceId = randomUUID();
+      const split = worked > 6 * 60 && rand() < 0.8; // lunch break of 30–60 min
+      const parts = split ? [Math.floor(worked * 0.5), worked - Math.floor(worked * 0.5)] : [worked];
+      let t = clockIn.getTime();
+      for (const mins of parts) {
+        sessions.push({ tenantId: tenant.id, attendanceId, employeeId: id, clockIn: new Date(t), clockOut: new Date(t + mins * 60000), minutes: mins });
+        t += (mins + 30 + Math.floor(rand() * 30)) * 60000;
+      }
+      const last = sessions[sessions.length - 1].clockOut;
       rows.push({
-        tenantId: tenant.id, employeeId: id, date: d, clockIn, clockOut: new Date(clockIn.getTime() + worked * 60000), workMinutes: worked,
+        id: attendanceId, tenantId: tenant.id, employeeId: id, date: d, clockIn, clockOut: last, workMinutes: worked,
         status: worked >= 360 ? ('PRESENT' as const) : ('HALF_DAY' as const),
       });
     }
   }
   await prisma.attendance.createMany({ data: rows });
+  await prisma.attendanceSession.createMany({ data: sessions });
 
   // Leave requests go through the real approval chain
   const hierarchy = new HierarchyService(prisma as any);

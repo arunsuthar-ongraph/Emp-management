@@ -5,6 +5,7 @@ export interface Me {
   id: string;
   email: string;
   role: string;
+  avatarUrl: string | null;
   permissions: string[];
   isLead: boolean; // reporting manager or department head
   tenant: { id: string; name: string; slug: string; state: string } | null;
@@ -16,6 +17,7 @@ interface AuthCtx {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  refresh: () => Promise<void>;
   can: (perm: string) => boolean;
 }
 
@@ -43,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     loading,
     login: async (email, password) => accept((await api.post('/auth/login', { email, password })).data),
+    refresh: async () => setUser(await get<Me>('/auth/me')),
     logout: () => {
       localStorage.removeItem('token');
       setUser(null);

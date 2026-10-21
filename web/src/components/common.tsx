@@ -46,7 +46,7 @@ export function ClockWidget() {
   const punch = useMutation({
     mutationFn: (kind: 'in' | 'out') => api.post(`/attendance/clock-${kind}`),
     onSuccess: (_, kind) => {
-      message.success(kind === 'in' ? 'Clocked in. Have a great day!' : 'Clocked out. See you tomorrow!');
+      message.success(kind === 'in' ? 'Checked in' : 'Checked out. You can check in again any time.');
       qc.invalidateQueries({ queryKey: ['attendance-today'] });
       qc.invalidateQueries({ queryKey: ['dashboard'] });
       qc.invalidateQueries({ queryKey: ['attendance-me'] });
@@ -54,26 +54,47 @@ export function ClockWidget() {
     onError: (e) => message.error(errMsg(e)),
   });
 
-  const worked = today?.clockIn ? dayjs(today.clockOut || now).diff(dayjs(today.clockIn), 'minute') : 0;
+  // Total = completed sessions + the running one
+  const isIn = !!today?.isIn;
+  const running = isIn ? now.diff(dayjs(today.openSession.clockIn), 'minute') : 0;
+  const worked = (today?.workMinutes || 0) + running;
+  const sessions: any[] = today?.sessions || [];
+  const label = { color: '#c7d2fe' };
 
   return (
     <Card bordered={false} style={{ height: '100%', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff' }}>
-      <Typography.Text style={{ color: '#e0e7ff' }}>{now.format('dddd, DD MMM YYYY')}</Typography.Text>
-      <div style={{ fontSize: 34, fontWeight: 700, margin: '4px 0 12px' }}>{now.format('hh:mm:ss A')}</div>
-      <Space size="large" wrap style={{ marginBottom: 16 }}>
-        <Statistic title={<span style={{ color: '#c7d2fe' }}>In</span>} value={fmtTime(today?.clockIn)} valueStyle={{ color: '#fff', fontSize: 16 }} />
-        <Statistic title={<span style={{ color: '#c7d2fe' }}>Out</span>} value={fmtTime(today?.clockOut)} valueStyle={{ color: '#fff', fontSize: 16 }} />
-        <Statistic title={<span style={{ color: '#c7d2fe' }}>Worked</span>} value={`${Math.floor(worked / 60)}h ${worked % 60}m`} valueStyle={{ color: '#fff', fontSize: 16 }} />
+      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+        <Typography.Text style={{ color: '#e0e7ff' }}>{now.format('dddd, DD MMM YYYY')}</Typography.Text>
+        <Tag color={isIn ? 'green' : 'default'} style={{ marginRight: 0 }}>{isIn ? '● Checked in' : 'Checked out'}</Tag>
       </Space>
-      <div>
-        {!today?.clockIn ? (
-          <Button size="large" icon={<LoginOutlined />} loading={punch.isPending} onClick={() => punch.mutate('in')}>Clock In</Button>
-        ) : !today?.clockOut ? (
-          <Button size="large" danger icon={<LogoutOutlined />} loading={punch.isPending} onClick={() => punch.mutate('out')}>Clock Out</Button>
+      <div style={{ fontSize: 34, fontWeight: 700, margin: '4px 0 12px' }}>{now.format('hh:mm:ss A')}</div>
+      <Space size="large" wrap style={{ marginBottom: 12 }}>
+        <Statistic title={<span style={label}>First in</span>} value={fmtTime(today?.clockIn)} valueStyle={{ color: '#fff', fontSize: 16 }} />
+        <Statistic title={<span style={label}>Last out</span>} value={fmtTime(today?.clockOut)} valueStyle={{ color: '#fff', fontSize: 16 }} />
+        <Statistic title={<span style={label}>Worked today</span>} value={`${Math.floor(worked / 60)}h ${worked % 60}m`} valueStyle={{ color: '#fff', fontSize: 16 }} />
+        <Statistic title={<span style={label}>Sessions</span>} value={sessions.length} valueStyle={{ color: '#fff', fontSize: 16 }} />
+      </Space>
+      <div style={{ marginBottom: sessions.length ? 12 : 0 }}>
+        {isIn ? (
+          <Button size="large" danger icon={<LogoutOutlined />} loading={punch.isPending} onClick={() => punch.mutate('out')}>
+            Check Out <span style={{ marginLeft: 6, opacity: 0.8 }}>({Math.floor(running / 60)}h {running % 60}m)</span>
+          </Button>
         ) : (
-          <Tag color="green" style={{ fontSize: 14, padding: '4px 10px' }}>Day completed ✓</Tag>
+          <Button size="large" icon={<LoginOutlined />} loading={punch.isPending} onClick={() => punch.mutate('in')}>
+            {sessions.length ? 'Check In Again' : 'Check In'}
+          </Button>
         )}
       </div>
+      {sessions.length > 0 && (
+        <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: '6px 10px', fontSize: 12 }}>
+          {sessions.map((x, i) => (
+            <div key={x.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
+              <span>#{i + 1} {fmtTime(x.clockIn)} → {x.clockOut ? fmtTime(x.clockOut) : 'now'}</span>
+              <span>{x.clockOut ? `${Math.floor(x.minutes / 60)}h ${x.minutes % 60}m` : 'running'}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }

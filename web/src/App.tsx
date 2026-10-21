@@ -13,6 +13,7 @@ import Payroll from './pages/Payroll';
 import Payslips from './pages/Payslips';
 import Settings from './pages/Settings';
 import Tenants from './pages/Tenants';
+import Profile from './pages/Profile';
 
 export default function App() {
   const { user, loading, can } = useAuth();
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/holidays" element={user.tenant ? <Holidays /> : <Navigate to={home} />} />
         <Route path="/payroll" element={guard('payroll.manage', <Payroll />)} />
         <Route path="/payslips" element={guard('payslip.self', <Payslips />)} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/settings" element={guard('settings.write', <Settings />)} />
       </Route>
       <Route path="*" element={<Navigate to={home} replace />} />

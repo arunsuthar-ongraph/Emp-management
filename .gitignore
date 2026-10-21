@@ -2,3 +2,6 @@ node_modules/
 dist/
 .env
 *.log
+
+# user uploads (profile pictures)
+api/uploads/

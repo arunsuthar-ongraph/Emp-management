@@ -14,6 +14,7 @@ import { PayrollModule } from './payroll/payroll.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SettingsModule } from './settings/settings.module';
 import { PlatformModule } from './platform/platform.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { PlatformModule } from './platform/platform.module';
     DashboardModule,
     SettingsModule,
     PlatformModule,
+    ProfileModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
 })

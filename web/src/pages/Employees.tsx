@@ -150,7 +150,7 @@ export default function Employees() {
             title: 'Employee',
             render: (_, e: any) => (
               <Space>
-                <Avatar style={{ background: '#6366f1' }}>{e.firstName[0]}</Avatar>
+                <Avatar src={e.user?.avatarUrl || undefined} style={{ background: '#6366f1' }}>{e.firstName[0]}</Avatar>
                 <div>
                   <div style={{ fontWeight: 500 }}>{e.firstName} {e.lastName}</div>
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>{e.code} · {e.email}</Typography.Text>
@@ -204,6 +204,9 @@ export default function Employees() {
             <Col xs={24} sm={12}><Form.Item name="phone" label="Phone"><Input /></Form.Item></Col>
             <Col xs={24} sm={12}><Form.Item name="gender" label="Gender"><Select allowClear options={['Male', 'Female', 'Other'].map((g) => ({ value: g, label: g }))} /></Form.Item></Col>
             <Col xs={24} sm={12}><Form.Item name="dob" label="Date of birth"><DatePicker style={{ width: '100%' }} format="DD MMM YYYY" /></Form.Item></Col>
+            <Col xs={24}><Form.Item name="address" label="Address"><Input.TextArea rows={2} /></Form.Item></Col>
+            <Col xs={24} sm={12}><Form.Item name="emergencyName" label="Emergency contact name"><Input /></Form.Item></Col>
+            <Col xs={24} sm={12}><Form.Item name="emergencyPhone" label="Emergency contact phone"><Input /></Form.Item></Col>
           </Row>
 
           <Divider orientation="left" plain>Job &amp; Hierarchy</Divider>
