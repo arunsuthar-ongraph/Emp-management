@@ -1,0 +1,298 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  COMPANY_ADMIN
+  HR_ADMIN
+  PAYROLL_ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  HALF_DAY
+  ABSENT
+}
+
+enum ApprovalFlow {
+  MANAGER           // reporting manager only
+  DEPARTMENT_HEAD   // department head only
+  MANAGER_THEN_HEAD // reporting manager, then department head
+}
+
+enum ApprovalStepStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SKIPPED
+}
+
+enum PayrollStatus {
+  DRAFT
+  FINALIZED
+}
+
+model Tenant {
+  id           String        @id @default(uuid())
+  name         String
+  slug         String        @unique // subdomain: <slug>.yourdomain.com
+  isActive     Boolean       @default(true)
+  state        String        @default("MH") // drives Professional Tax slab
+  address      String?
+  pan          String?
+  tan          String?
+  pfCode       String?
+  esiCode      String?
+  leaveApprovalFlow ApprovalFlow @default(MANAGER_THEN_HEAD)
+  createdAt    DateTime      @default(now())
+  users        User[]
+  employees    Employee[]
+  departments  Department[]
+  designations Designation[]
+  leaveTypes   LeaveType[]
+  holidays     Holiday[]
+  payrollRuns  PayrollRun[]
+}
+
+model User {
+  id           String    @id @default(uuid())
+  tenantId     String?
+  tenant       Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email        String
+  passwordHash String
+  role         Role      @default(EMPLOYEE)
+  isActive     Boolean   @default(true)
+  employeeId   String?   @unique
+  employee     Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+  approvals    LeaveRequest[] @relation("Approver")
+  approvalActions LeaveApproval[] @relation("ApprovalActor")
+
+  @@unique([tenantId, email])
+}
+
+model Department {
+  id        String       @id @default(uuid())
+  tenantId  String
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  parentId  String?
+  parent    Department?  @relation("SubDepartments", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Department[] @relation("SubDepartments")
+  headId    String?
+  head      Employee?    @relation("DepartmentHead", fields: [headId], references: [id], onDelete: SetNull)
+  employees Employee[]   @relation("DepartmentMembers")
+
+  @@unique([tenantId, name])
+}
+
+model Designation {
+  id        String     @id @default(uuid())
+  tenantId  String
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  employees Employee[]
+
+  @@unique([tenantId, name])
+}
+
+model Employee {
+  id            String         @id @default(uuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code          String
+  firstName     String
+  lastName      String
+  email         String
+  phone         String?
+  gender        String?
+  dob           DateTime?      @db.Date
+  joiningDate   DateTime       @db.Date
+  exitDate      DateTime?      @db.Date
+  status        EmployeeStatus @default(ACTIVE)
+  departmentId  String?
+  department    Department?    @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
+  designationId String?
+  designation   Designation?   @relation(fields: [designationId], references: [id], onDelete: SetNull)
+  managerId     String?
+  manager       Employee?      @relation("Reports", fields: [managerId], references: [id], onDelete: SetNull)
+  reports       Employee[]     @relation("Reports")
+  pan           String?
+  uan           String?
+  bankName      String?
+  bankAccount   String?
+  ifsc          String?
+  ctcAnnual     Decimal        @default(0) @db.Decimal(14, 2)
+  createdAt     DateTime       @default(now())
+  user          User?
+  leaveBalances LeaveBalance[]
+  leaveRequests LeaveRequest[] @relation("Requester")
+  headOf        Department[]   @relation("DepartmentHead")
+  awaitingMe    LeaveRequest[] @relation("CurrentApprover")
+  approvalSteps LeaveApproval[] @relation("StepApprover")
+  attendance    Attendance[]
+  payslips      Payslip[]
+
+  @@unique([tenantId, code])
+}
+
+model LeaveType {
+  id           String         @id @default(uuid())
+  tenantId     String
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  code         String
+  annualQuota  Int            @default(0)
+  isPaid       Boolean        @default(true)
+  carryForward Boolean        @default(false)
+  isActive     Boolean        @default(true)
+  balances     LeaveBalance[]
+  requests     LeaveRequest[]
+
+  @@unique([tenantId, code])
+}
+
+model LeaveBalance {
+  id          String    @id @default(uuid())
+  tenantId    String
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId String
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  year        Int
+  allocated   Decimal   @default(0) @db.Decimal(6, 1)
+  used        Decimal   @default(0) @db.Decimal(6, 1)
+
+  @@unique([employeeId, leaveTypeId, year])
+}
+
+model LeaveRequest {
+  id              String      @id @default(uuid())
+  tenantId        String
+  employeeId      String
+  employee        Employee    @relation("Requester", fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId     String
+  leaveType       LeaveType   @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  fromDate        DateTime    @db.Date
+  toDate          DateTime    @db.Date
+  halfDay         Boolean     @default(false)
+  days            Decimal     @db.Decimal(6, 1)
+  reason          String?
+  status          LeaveStatus @default(PENDING)
+  approverId      String?
+  approver        User?       @relation("Approver", fields: [approverId], references: [id], onDelete: SetNull)
+  approverComment String?
+  // Hierarchical approval: who must act now (null = HR/Admin queue)
+  currentLevel      Int       @default(1)
+  currentApproverId String?
+  currentApprover   Employee? @relation("CurrentApprover", fields: [currentApproverId], references: [id], onDelete: SetNull)
+  approvals         LeaveApproval[]
+  createdAt       DateTime    @default(now())
+
+  @@index([tenantId, status])
+  @@index([currentApproverId, status])
+}
+
+/** One step of a leave request's approval chain. */
+model LeaveApproval {
+  id         String             @id @default(uuid())
+  tenantId   String
+  requestId  String
+  request    LeaveRequest       @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  level      Int
+  approverId String? // employee expected to act; null = HR/Admin
+  approver   Employee?          @relation("StepApprover", fields: [approverId], references: [id], onDelete: SetNull)
+  role       String // "Reporting Manager" | "Department Head" | "HR"
+  status     ApprovalStepStatus @default(PENDING)
+  comment    String?
+  actedById  String?
+  actedBy    User?              @relation("ApprovalActor", fields: [actedById], references: [id], onDelete: SetNull)
+  actedAt    DateTime?
+
+  @@unique([requestId, level])
+}
+
+model Holiday {
+  id       String   @id @default(uuid())
+  tenantId String
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name     String
+  date     DateTime @db.Date
+  optional Boolean  @default(false)
+
+  @@unique([tenantId, date])
+}
+
+model Attendance {
+  id          String           @id @default(uuid())
+  tenantId    String
+  employeeId  String
+  employee    Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date        DateTime         @db.Date
+  clockIn     DateTime?
+  clockOut    DateTime?
+  workMinutes Int              @default(0)
+  status      AttendanceStatus @default(PRESENT)
+
+  @@unique([employeeId, date])
+  @@index([tenantId, date])
+}
+
+model PayrollRun {
+  id              String        @id @default(uuid())
+  tenantId        String
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  month           Int
+  year            Int
+  status          PayrollStatus @default(DRAFT)
+  totalGross      Decimal       @default(0) @db.Decimal(14, 2)
+  totalDeductions Decimal       @default(0) @db.Decimal(14, 2)
+  totalNet        Decimal       @default(0) @db.Decimal(14, 2)
+  totalEmployer   Decimal       @default(0) @db.Decimal(14, 2)
+  employeeCount   Int           @default(0)
+  finalizedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  payslips        Payslip[]
+
+  @@unique([tenantId, year, month])
+}
+
+model Payslip {
+  id              String     @id @default(uuid())
+  tenantId        String
+  payrollRunId    String
+  payrollRun      PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  employeeId      String
+  employee        Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  daysInMonth     Int
+  paidDays        Decimal    @db.Decimal(5, 1)
+  lopDays         Decimal    @db.Decimal(5, 1)
+  earnings        Json
+  deductions      Json
+  employer        Json
+  gross           Decimal    @db.Decimal(14, 2)
+  totalDeductions Decimal    @db.Decimal(14, 2)
+  net             Decimal    @db.Decimal(14, 2)
+
+  @@unique([payrollRunId, employeeId])
+}
