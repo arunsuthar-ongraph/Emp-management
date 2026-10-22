@@ -47,6 +47,25 @@ enum ApprovalStepStatus {
   SKIPPED
 }
 
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE  // period ended, inside the grace period
+  EXPIRED   // grace over: company is read-only
+  CANCELLED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY // charged for 10 months (2 months free)
+}
+
+enum InvoiceStatus {
+  DUE
+  PAID
+  VOID
+}
+
 enum PayrollStatus {
   DRAFT
   FINALIZED
@@ -63,6 +82,7 @@ model Tenant {
   tan          String?
   pfCode       String?
   esiCode      String?
+  gstin        String? // shown on subscription invoices
   leaveApprovalFlow ApprovalFlow @default(MANAGER_THEN_HEAD)
   createdAt    DateTime      @default(now())
   users        User[]
@@ -72,6 +92,74 @@ model Tenant {
   leaveTypes   LeaveType[]
   holidays     Holiday[]
   payrollRuns  PayrollRun[]
+  subscription Subscription?
+  invoices     Invoice[]
+}
+
+/** A SaaS plan, priced per active employee per month. Managed by the platform super admin. */
+model Plan {
+  id               String         @id @default(uuid())
+  code             String         @unique
+  name             String
+  description      String?
+  pricePerEmployee Decimal        @db.Decimal(10, 2) // INR per active employee per month
+  minMonthly       Decimal        @default(0) @db.Decimal(10, 2) // minimum monthly charge
+  maxEmployees     Int? // null = unlimited
+  features         String[] // module codes, e.g. leave, attendance, payroll
+  trialDays        Int            @default(14)
+  isActive         Boolean        @default(true)
+  sortOrder        Int            @default(0)
+  createdAt        DateTime       @default(now())
+  subscriptions    Subscription[]
+  invoices         Invoice[]
+}
+
+model Subscription {
+  id                 String             @id @default(uuid())
+  tenantId           String             @unique
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planId             String
+  plan               Plan               @relation(fields: [planId], references: [id])
+  status             SubscriptionStatus @default(TRIALING)
+  billingCycle       BillingCycle       @default(MONTHLY)
+  trialEndsAt        DateTime?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  invoices           Invoice[]
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  number         String        @unique // INV-2026-0001
+  tenantId       String
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscriptionId String
+  subscription   Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  planId         String
+  plan           Plan          @relation(fields: [planId], references: [id])
+  billingCycle   BillingCycle
+  periodStart    DateTime
+  periodEnd      DateTime
+  employeeCount  Int // billable active employees when invoiced
+  unitPrice      Decimal       @db.Decimal(10, 2)
+  months         Int // months charged (1, or 10 for yearly)
+  subtotal       Decimal       @db.Decimal(12, 2)
+  cgst           Decimal       @default(0) @db.Decimal(12, 2)
+  sgst           Decimal       @default(0) @db.Decimal(12, 2)
+  igst           Decimal       @default(0) @db.Decimal(12, 2)
+  total          Decimal       @db.Decimal(12, 2)
+  status         InvoiceStatus @default(DUE)
+  dueDate        DateTime
+  paidAt         DateTime?
+  paymentMethod  String?
+  paymentRef     String?
+  notes          String?
+  createdAt      DateTime      @default(now())
+
+  @@index([tenantId, status])
+  @@index([subscriptionId, periodStart])
 }
 
 model User {

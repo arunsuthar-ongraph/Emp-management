@@ -16,6 +16,7 @@ export const P = {
   PAYSLIP_SELF: 'payslip.self',
   SETTINGS_WRITE: 'settings.write',
   PLATFORM_ADMIN: 'platform.admin',
+  BILLING_MANAGE: 'billing.manage',
 } as const;
 
 export type Permission = (typeof P)[keyof typeof P];

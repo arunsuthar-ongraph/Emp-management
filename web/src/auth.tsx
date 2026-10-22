@@ -8,6 +8,15 @@ export interface Me {
   avatarUrl: string | null;
   permissions: string[];
   isLead: boolean; // reporting manager or department head
+  subscription: {
+    access: 'FULL' | 'GRACE' | 'READ_ONLY';
+    status: 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'EXPIRED' | 'CANCELLED';
+    endsAt: string | null;
+    daysLeft: number;
+    readOnlyFrom: string | null;
+    plan: { id: string; code: string; name: string; maxEmployees: number | null };
+    features: string[];
+  } | null;
   tenant: { id: string; name: string; slug: string; state: string } | null;
   employee: { id: string; code: string; name: string; designation?: string; department?: string } | null;
 }
@@ -19,6 +28,8 @@ interface AuthCtx {
   logout: () => void;
   refresh: () => Promise<void>;
   can: (perm: string) => boolean;
+  /** Module included in the company's plan (always true for the platform admin). */
+  has: (feature: string) => boolean;
 }
 
 const Ctx = createContext<AuthCtx>(null!);
@@ -52,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.location.href = '/login';
     },
     can: (perm) => !!user?.permissions.includes(perm),
+    has: (feature) => !user?.subscription || user.subscription.features.includes(feature),
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

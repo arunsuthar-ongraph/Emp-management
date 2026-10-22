@@ -1,10 +1,11 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Optional, NotFoundException } from '@nestjs/common';
 import { LeaveStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser, requireEmployee } from '../common/auth';
 import { hasPermission, P } from '../common/permissions';
 import { dateKey, eachDay, isWeekend, toDate, todayIST } from '../common/dates';
 import { HierarchyService } from '../common/hierarchy';
+import { LeaveNotifier } from '../notifications/leave-notifier';
 
 export interface ApplyLeaveInput {
   leaveTypeId: string;
@@ -30,7 +31,11 @@ const requestInclude = {
 
 @Injectable()
 export class LeaveService {
-  constructor(private prisma: PrismaService, private hierarchy: HierarchyService) {}
+  constructor(
+    private prisma: PrismaService,
+    private hierarchy: HierarchyService,
+    @Optional() private notify?: LeaveNotifier, // absent in the seed script, so no emails are sent there
+  ) {}
 
   // ---------- Leave types ----------
   types(u: AuthUser) {
@@ -138,7 +143,7 @@ export class LeaveService {
     const tenant = await this.prisma.tenant.findUniqueOrThrow({ where: { id: u.tenantId } });
     const chain = await this.hierarchy.approvalChain(u.tenantId, employeeId, tenant.leaveApprovalFlow);
 
-    return this.prisma.leaveRequest.create({
+    const created = await this.prisma.leaveRequest.create({
       data: {
         tenantId: u.tenantId, employeeId, leaveTypeId: type.id, fromDate: from, toDate: to, halfDay, days, reason: input.reason,
         currentLevel: 1,
@@ -149,6 +154,8 @@ export class LeaveService {
       },
       include: requestInclude,
     });
+    this.notify?.requested(created.id);
+    return created;
   }
 
   myRequests(u: AuthUser) {
@@ -221,7 +228,7 @@ export class LeaveService {
     const finalDecision = !approve || !next || override;
     const now = new Date();
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       if (step) {
         await tx.leaveApproval.update({
           where: { id: step.id },
@@ -258,6 +265,10 @@ export class LeaveService {
         include: requestInclude,
       });
     });
+    // Emails go out only after the change is committed
+    if (result.status === 'PENDING') this.notify?.forwarded(id);
+    else this.notify?.decided(id);
+    return result;
   }
 
   async cancel(u: AuthUser, id: string) {
@@ -268,7 +279,7 @@ export class LeaveService {
     }
     if (!['PENDING', 'APPROVED'].includes(req.status)) throw new BadRequestException('Request cannot be cancelled');
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       if (req.status === 'APPROVED' && req.leaveType.isPaid) {
         await tx.leaveBalance.updateMany({
           where: { employeeId: req.employeeId, leaveTypeId: req.leaveTypeId, year: req.fromDate.getUTCFullYear() },
@@ -278,5 +289,7 @@ export class LeaveService {
       await tx.leaveApproval.updateMany({ where: { requestId: id, status: 'PENDING' }, data: { status: 'SKIPPED' } });
       return tx.leaveRequest.update({ where: { id }, data: { status: 'CANCELLED', currentApproverId: null }, include: requestInclude });
     });
+    this.notify?.cancelled(id, req.status, req.currentApproverId);
+    return result;
   }
 }

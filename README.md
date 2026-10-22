@@ -59,10 +59,26 @@ Company users sign in at `acme.localhost:5173`; the super admin signs in at `loc
 - **When someone exits**, their direct reports move to their manager, departments they head lose the head, and requests waiting on them go to the HR queue.
 - **Built for large teams**: the employee list is paged and searched on the server, employee pickers search the server, the org chart loads one level at a time, and employees can be moved to a department or manager in bulk.
 
+## Email notifications (leave)
+
+| Event | Who gets an email |
+|---|---|
+| Leave requested | The first approver (or HR/Admin if there is none), plus a confirmation to the employee |
+| Approved at one step | The next approver in the chain |
+| Final approval / rejection | The employee, with the approver's comment |
+| Cancelled by employee | Whoever it was waiting on, or the people who approved it if it was already approved |
+
+Emails go out in the background after the change is saved, with up to 3 attempts. A mail problem never blocks the leave action. Failures are written to the API log.
+
+- **Local:** `npm run mail:up` starts [Mailpit](http://localhost:8025), which catches every email so you can read it in the browser. Nothing is delivered to real inboxes.
+- **Production:** set `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` and `APP_URL` in `api/.env` (e.g. Amazon SES, SendGrid, Zoho, Google Workspace). With `SMTP_HOST` empty, emails are only logged.
+- The seed script never sends emails.
+
 ## Where things live
 
 - Role → permission map: `api/src/common/permissions.ts` (mirrored in the web menu)
 - Statutory rates (PF, ESI, PT slabs, tax slabs): `api/src/payroll/statutory.ts`
 - Payroll maths (pure functions): `api/src/payroll/payroll-calculator.ts`
+- Email sending / leave email templates: `api/src/notifications/`
 - Hierarchy, team scope and approval chain: `api/src/common/hierarchy.ts`
 - LOP / paid-days logic: `AttendanceService.monthSummary` in `api/src/attendance/attendance.service.ts`

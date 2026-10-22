@@ -5,6 +5,7 @@ import { AuthUser, CurrentUser, Permissions } from '../common/auth';
 import { P } from '../common/permissions';
 import { todayIST } from '../common/dates';
 import { AttendanceService } from './attendance.service';
+import { Feature } from '../billing/billing.module';
 
 class MarkDto {
   @IsNotEmpty() employeeId: string;
@@ -18,6 +19,7 @@ const ym = (y?: string, m?: string) => {
 };
 
 @Controller('attendance')
+@Feature('attendance')
 export class AttendanceController {
   constructor(private svc: AttendanceService) {}
 

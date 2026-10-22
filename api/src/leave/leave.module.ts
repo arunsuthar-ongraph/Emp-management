@@ -4,6 +4,8 @@ import { IsBoolean, IsDateString, IsInt, IsNotEmpty, IsOptional, IsString, Min }
 import { AuthUser, CurrentUser, Permissions, requireEmployee } from '../common/auth';
 import { P } from '../common/permissions';
 import { LeaveService } from './leave.service';
+import { LeaveNotifier } from '../notifications/leave-notifier';
+import { Feature } from '../billing/billing.module';
 
 class LeaveTypeDto {
   @IsNotEmpty() name: string;
@@ -27,6 +29,7 @@ class DecisionDto {
 }
 
 @Controller('leave')
+@Feature('leave')
 export class LeaveController {
   constructor(private svc: LeaveService) {}
 
@@ -84,5 +87,5 @@ export class LeaveController {
   }
 }
 
-@Module({ controllers: [LeaveController], providers: [LeaveService], exports: [LeaveService] })
+@Module({ controllers: [LeaveController], providers: [LeaveService, LeaveNotifier], exports: [LeaveService] })
 export class LeaveModule {}

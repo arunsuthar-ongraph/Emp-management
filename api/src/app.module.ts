@@ -3,6 +3,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from './prisma/prisma.service';
 import { HierarchyModule } from './common/hierarchy';
+import { MailModule } from './notifications/mail.service';
+import { BillingModule, SubscriptionGuard } from './billing/billing.module';
 import { AuthGuard } from './common/auth';
 import { AuthModule } from './auth/auth.module';
 import { EmployeesModule } from './employees/employees.module';
@@ -20,6 +22,8 @@ import { ProfileModule } from './profile/profile.module';
   imports: [
     PrismaModule,
     HierarchyModule,
+    MailModule,
+    BillingModule,
     JwtModule.register({ global: true, secret: process.env.JWT_SECRET, signOptions: { expiresIn: '12h' } }),
     AuthModule,
     EmployeesModule,
@@ -33,6 +37,7 @@ import { ProfileModule } from './profile/profile.module';
     PlatformModule,
     ProfileModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
+  // Order matters: authenticate first, then apply plan/subscription rules
+  providers: [{ provide: APP_GUARD, useClass: AuthGuard }, { provide: APP_GUARD, useClass: SubscriptionGuard }],
 })
 export class AppModule {}

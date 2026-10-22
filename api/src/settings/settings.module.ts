@@ -4,6 +4,7 @@ import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser, CurrentUser, Permissions } from '../common/auth';
 import { P } from '../common/permissions';
+import { STATES } from '../payroll/statutory';
 
 class CompanyDto {
   @IsNotEmpty() name: string;
@@ -19,6 +20,11 @@ class CompanyDto {
 @Controller()
 export class SettingsController {
   constructor(private prisma: PrismaService) {}
+
+  /** State list (Professional Tax), used by settings and company setup; available on every plan. */
+  @Get('payroll/states') states() {
+    return STATES;
+  }
 
   @Get('settings/company') company(@CurrentUser() u: AuthUser) {
     return this.prisma.tenant.findUnique({ where: { id: u.tenantId } });

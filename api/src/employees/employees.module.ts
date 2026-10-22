@@ -7,6 +7,7 @@ import { AuthUser, CurrentUser, Permissions } from '../common/auth';
 import { hasPermission, P } from '../common/permissions';
 import { toDate } from '../common/dates';
 import { HierarchyService } from '../common/hierarchy';
+import { BillingService } from '../billing/billing.service';
 
 class EmployeeDto {
   @IsOptional() @IsString() code?: string;
@@ -63,7 +64,7 @@ const include = {
 
 @Injectable()
 export class EmployeesService {
-  constructor(private prisma: PrismaService, private hierarchy: HierarchyService) {}
+  constructor(private prisma: PrismaService, private hierarchy: HierarchyService, private billing: BillingService) {}
 
   /** Salary is visible only to roles that manage payroll. */
   private present<T extends { ctcAnnual: Prisma.Decimal }>(e: T, user: AuthUser) {
@@ -155,6 +156,7 @@ export class EmployeesService {
   }
 
   async create(user: AuthUser, dto: EmployeeDto) {
+    await this.billing.assertCanAddEmployee(user.tenantId);
     const code = dto.code || (await this.nextCode(user.tenantId));
     if (await this.prisma.employee.findFirst({ where: { tenantId: user.tenantId, code } })) {
       throw new BadRequestException(`Employee code ${code} already exists`);
@@ -184,6 +186,7 @@ export class EmployeesService {
   async setStatus(user: AuthUser, id: string, dto: StatusDto) {
     const emp = await this.get(user, id);
     const leaving = dto.status === 'INACTIVE';
+    if (!leaving && emp.status !== 'ACTIVE') await this.billing.assertCanAddEmployee(user.tenantId);
     await this.prisma.$transaction([
       this.prisma.employee.update({
         where: { id },
