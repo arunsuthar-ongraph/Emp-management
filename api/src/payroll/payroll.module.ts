@@ -2,7 +2,7 @@ import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get,
 import { Prisma } from '@prisma/client';
 import { IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuthUser, CurrentUser, Permissions, requireEmployee } from '../common/auth';
+import { AuthUser, CurrentUser, Permissions, Public, requireEmployee } from '../common/auth';
 import { hasPermission, P } from '../common/permissions';
 import { monthRange, todayIST } from '../common/dates';
 import { AttendanceModule } from '../attendance/attendance.module';
@@ -174,7 +174,8 @@ export class PayrollService {
 export class PayrollController {
   constructor(private svc: PayrollService) {}
 
-  @Get('states') states() {
+  /** Reference list of states (Professional Tax); public so the sign-up form can use it. */
+  @Public() @Get('states') states() {
     return STATES;
   }
 

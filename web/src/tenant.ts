@@ -13,14 +13,14 @@
  */
 declare global {
   interface Window {
-    __APP_CONFIG__?: { rootDomain?: string | null };
+    __APP_CONFIG__?: { rootDomain?: string | null; mode?: 'single' | 'multi'; superAdmin?: boolean; signup?: boolean };
   }
 }
 
 const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/;
 /** First path segments that are app pages, not companies. Keep in sync with RESERVED on the server. */
 const NOT_A_COMPANY = new Set([
-  'login', 'employees', 'organization', 'leave', 'attendance', 'holidays', 'payroll', 'payslips',
+  'login', 'signup', 'employees', 'organization', 'leave', 'attendance', 'holidays', 'payroll', 'payslips',
   'profile', 'settings', 'tenants', 'assets', 'api', 'uploads', 'health', 'www',
 ]);
 
@@ -51,8 +51,11 @@ function fromPath(): string | null {
   return SLUG.test(first) && !NOT_A_COMPANY.has(first) ? first : null;
 }
 
-const SUB = fromSubdomain();
-const PATH = SUB ? null : fromPath();
+/** Single-company deployment: the address never names a company; the server knows which one it is. */
+export const SINGLE_COMPANY = window.__APP_CONFIG__?.mode === 'single';
+
+const SUB = SINGLE_COMPANY ? null : fromSubdomain();
+const PATH = SUB || SINGLE_COMPANY ? null : fromPath();
 
 /** Company slug for this page (subdomain wins over path), or null on the platform portal. */
 export const tenantSlug = (): string | null => SUB || PATH;
@@ -72,7 +75,7 @@ const origin = () => {
 };
 
 /** True when companies get their own subdomain (root domain configured); false means path addresses. */
-export const usesSubdomains = () => !!CONFIGURED_ROOT;
+export const usesSubdomains = () => !SINGLE_COMPANY && !!CONFIGURED_ROOT;
 
 /** Full sign-in URL of a company. */
 export function tenantUrl(slug: string) {

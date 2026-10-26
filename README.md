@@ -88,11 +88,22 @@ The app deploys as **one Railway service**: the API also serves the built fronte
 |---|---|
 | `NODE_ENV` | `production` |
 | `JWT_SECRET` | at least 32 random characters (`openssl rand -hex 32`). The app won't start without it |
-| `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | first platform admin, created on the first start (password of at least 10 characters). Remove the password afterwards |
+| `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | first platform admin, created on the first start (password of at least 10 characters). Remove the password afterwards. Not used in single-company mode (`SUPER_ADMIN_ENABLED=false`) |
 | `ROOT_DOMAIN` | only with your own domain + wildcard, e.g. `peopledesk.in`. Leave it unset on Railway's generated domain. Read when the app starts, so no rebuild is needed |
 | `APP_URL` | optional link format for emails: `https://{slug}.peopledesk.in` or `https://<app>.up.railway.app/{slug}`. Worked out automatically when unset |
 | `UPLOAD_DIR` | `/data/uploads` |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | your email provider. Leave `SMTP_HOST` empty to only log emails |
+
+**Single company or many.** One variable picks the mode:
+
+| `SUPER_ADMIN_ENABLED` | Mode | How it works |
+|---|---|---|
+| `false` | **Single company** | One company per deployment at the main address, with a plain sign-in page: no sign-up, no Super Admin, no subdomains or `/<company>` paths. The company and its admin login are created on startup from `COMPANY_NAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` (8+ characters; optional `ADMIN_FIRST_NAME`, `ADMIN_LAST_NAME`, `COMPANY_STATE`) |
+| `true` or unset | **Multi-company** | The Super Admin manages companies under **Companies**; each company has its own address (`/<company>` path, or a subdomain with a custom domain). Add `PUBLIC_SIGNUP=true` to also let companies sign themselves up |
+
+`SUPER_ADMIN_ENABLED` drives **both the backend and the frontend**: the API reads it at startup, and the frontend build reads the same variable (Railway passes service variables to the build), so one variable on the service is enough. `VITE_SUPER_ADMIN_ENABLED` can override it for the frontend build only. If the two ever disagree, for example after changing the variable without a rebuild, the page shows a "Configuration mismatch" message instead of half-working; redeploy to fix it.
+
+The admin login is created once. Changing `ADMIN_PASSWORD` later doesn't change an existing password (change it in **My profile**), and a different `ADMIN_EMAIL` adds another admin login. Edits made in the app, like the company name, are never overwritten. In single-company mode an existing database with several companies uses the oldest one, or the one named in `COMPANY_SLUG`. Switching modes never deletes data.
 
 **3. Add a Volume** mounted at `/data`. Profile pictures are stored there; without a volume they're lost on every deploy.
 

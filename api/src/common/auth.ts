@@ -12,6 +12,8 @@ import { JwtService } from '@nestjs/jwt';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { hasPermission, Permission } from './permissions';
+import { superAdminEnabled } from './config';
+import { requestTenantSlug } from './tenant-context';
 
 /**
  * Current subdomain + enabled flag per company, cached briefly so sessions can be checked
@@ -28,9 +30,7 @@ export interface AuthUser {
   employeeId: string | null;
 }
 
-/** Company subdomain sent by the web app (X-Tenant header). Empty on the root/platform domain. */
-export const tenantSlugFrom = (req: { headers: Record<string, unknown> }) =>
-  String(req.headers['x-tenant'] || '').trim().toLowerCase() || null;
+export { tenantSlugFrom } from './tenant-context';
 
 export const Public = () => SetMetadata('isPublic', true);
 export const Permissions = (...perms: Permission[]) => SetMetadata('permissions', perms);
@@ -57,8 +57,11 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Session expired, please login again');
     }
     // A token is only valid on the subdomain it was issued for; the platform admin uses the root domain.
-    if ((req.user.tenantSlug || null) !== tenantSlugFrom(req)) {
+    if ((req.user.tenantSlug || null) !== (await requestTenantSlug(req, this.prisma))) {
       throw new UnauthorizedException('Please sign in on your company address');
+    }
+    if (req.user.role === 'SUPER_ADMIN' && !superAdminEnabled()) {
+      throw new UnauthorizedException('Platform administration is turned off');
     }
     // The company may have been moved to a new subdomain or suspended since this session started
     if (req.user.tenantId) {

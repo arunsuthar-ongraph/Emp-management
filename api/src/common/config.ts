@@ -32,11 +32,37 @@ export function companyUrl(slug: string): string {
   const appUrl = process.env.APP_URL;
   // A localhost APP_URL copied from .env.example is ignored in production
   const usable = appUrl && !(process.env.NODE_ENV === 'production' && /localhost|127\.0\.0\.1/.test(appUrl));
+  // Single-company mode: everything is at the main address, whatever the company slug
+  if (isSingleCompany()) {
+    if (usable) return appUrl.replace('{slug}.', '').replace('/{slug}', '').replace('{slug}', '').replace(/\/$/, '');
+    if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+    return 'http://localhost:5173';
+  }
   if (usable) return appUrl.replace('{slug}', slug).replace(/\/$/, '');
   if (ROOT_DOMAIN && ROOT_DOMAIN !== 'localhost' && !ROOT_DOMAIN.endsWith('.localhost')) return `https://${slug}.${ROOT_DOMAIN}`;
   if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/${slug}`;
   return `http://${slug}.localhost:5173`; // local development
 }
 
-/** Settings the frontend needs at runtime, injected into index.html by the server. */
-export const publicConfig = () => ({ rootDomain: ROOT_DOMAIN || null });
+
+const flag = (v: string | undefined, fallback: boolean) => (v === undefined || v.trim() === '' ? fallback : /^(1|true|yes|on)$/i.test(v.trim()));
+
+/** SUPER_ADMIN_ENABLED=false turns the platform super admin off entirely (sign-in, sessions, bootstrap). Default: on. */
+export const superAdminEnabled = () => flag(process.env.SUPER_ADMIN_ENABLED, true);
+
+/**
+ * SUPER_ADMIN_ENABLED=false means single-company mode: one company per deployment, signed in at the
+ * main address (no subdomains or /<company> paths). Its admin sets it up on the first visit.
+ */
+export const isSingleCompany = () => !superAdminEnabled();
+
+/** Multi-company mode only: PUBLIC_SIGNUP=true lets anyone create a company next to the super admin. */
+export const signupEnabled = () => !isSingleCompany() && flag(process.env.PUBLIC_SIGNUP, false);
+
+/** Settings the frontend needs at runtime (injected into index.html and served at /api/auth/config). */
+export const publicConfig = () => ({
+  rootDomain: ROOT_DOMAIN || null,
+  mode: isSingleCompany() ? ('single' as const) : ('multi' as const),
+  superAdmin: superAdminEnabled(),
+  signup: signupEnabled(),
+});

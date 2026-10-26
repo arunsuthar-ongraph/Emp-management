@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, Col, Empty, List, Progress, Row, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Col, Empty, List, Progress, Row, Space, Tag, Typography } from 'antd';
 import {
   CalendarOutlined,
   CheckCircleOutlined,
@@ -26,6 +26,9 @@ export default function Dashboard() {
   const hour = dayjs().hour();
   const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const p = usePalette();
+  // Company admins: remind them to finish company details after signing up
+  const { data: company } = useQuery({ queryKey: ['company'], queryFn: () => get('/settings/company'), enabled: can('settings.write') });
+  const setupPending = !!company && (!company.address || !company.pan);
   // Recharts styling for the current theme: recessive grid/axes, text in ink colors
   const axis = { stroke: p.border, tick: { fill: p.chartAxis, fontSize: 12 }, tickLine: false };
   const grid = { stroke: p.chartGrid, vertical: false };
@@ -44,6 +47,16 @@ export default function Dashboard() {
         subtitle={dayjs().format('dddd, D MMMM YYYY')}
         extra={can('leave.apply') && <Button type="primary" icon={<CalendarOutlined />} onClick={() => navigate('/leave')}>Apply for leave</Button>}
       />
+      {setupPending && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="Finish setting up your company"
+          description="Add your registered address and PAN. They appear on payslips and are needed for statutory reports."
+          action={<Button size="small" onClick={() => navigate('/settings')}>Open company settings</Button>}
+        />
+      )}
 
       {/* Company-wide KPIs */}
       {c && (

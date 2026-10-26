@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Alert, App, Button, Card, Divider, Form, Input, Result, Space, Spin, Tag, Typography } from 'antd';
+import { Alert, App, Button, Card, Divider, Form, Input, Result, Select, Space, Spin, Tag, Typography } from 'antd';
 import { ArrowRightOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { errMsg, get } from '../api';
+import { api, errMsg, get } from '../api';
 import { useAuth } from '../auth';
-import { platformUrl, slugAddon, tenantAddress, tenantSlug, tenantUrl } from '../tenant';
+import { platformUrl, SINGLE_COMPANY, slugAddon, tenantAddress, tenantSlug, tenantUrl } from '../tenant';
 import { ThemeToggle } from '../components/AppLayout';
 
 const DEMO_COMPANY = [
@@ -98,24 +98,145 @@ function CompanyLogin({ slug }: { slug: string }) {
   );
 }
 
-/** Root domain – platform super admin sign-in, plus a jump to a company subdomain. */
+/** Public sign-up: creates the company and its admin, then opens the company signed in. */
+function SignupForm() {
+  const { message } = App.useApp();
+  const [form] = Form.useForm();
+  const [busy, setBusy] = useState(false);
+  const [slugTouched, setSlugTouched] = useState(false);
+  const { data: states = [] } = useQuery({ queryKey: ['states'], queryFn: () => get('/payroll/states') });
+  const toSlug = (v: string) => v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32);
+  const slug: string = Form.useWatch('slug', form) || '';
+
+  const submit = async (v: any) => {
+    setBusy(true);
+    try {
+      const r = await api.post('/auth/signup', v);
+      // Hand the session to the company's own address (another origin in subdomain mode), then finish setup
+      window.location.href = `${tenantUrl(r.data.slug)}/settings?welcome=1#token=${encodeURIComponent(r.data.token)}`;
+    } catch (e) {
+      message.error(errMsg(e));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Form
+      form={form}
+      layout="vertical"
+      initialValues={{ state: 'MH' }}
+      onFinish={submit}
+      onValuesChange={(c) => 'companyName' in c && !slugTouched && form.setFieldsValue({ slug: toSlug(c.companyName) })}
+      requiredMark={false}
+    >
+      <Form.Item name="companyName" label="Company name" rules={[{ required: true, message: 'Enter your company name' }]}>
+        <Input size="large" placeholder="Acme Technologies Pvt Ltd" />
+      </Form.Item>
+      <Form.Item
+        name="slug"
+        label="Company address"
+        extra={slug ? `Your team signs in at ${tenantAddress(slug)}` : 'Your team signs in at this address'}
+        normalize={(v) => (v || '').toLowerCase()}
+        rules={[{ required: true, message: 'Choose an address' }, { pattern: /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/, message: 'Lowercase letters, numbers and hyphens' }]}
+      >
+        <Input addonBefore={slugAddon().before} addonAfter={slugAddon().after} placeholder="acme" onChange={() => setSlugTouched(true)} />
+      </Form.Item>
+      <Form.Item name="state" label="State" tooltip="Used for Professional Tax">
+        <Select showSearch optionFilterProp="label" options={states.map((x: any) => ({ value: x.code, label: x.name }))} />
+      </Form.Item>
+      <Space.Compact block>
+        <Form.Item name="firstName" label="Your first name" rules={[{ required: true, message: 'Required' }]} style={{ width: '50%' }}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="lastName" label="Last name" rules={[{ required: true, message: 'Required' }]} style={{ width: '50%', marginLeft: 8 }}>
+          <Input />
+        </Form.Item>
+      </Space.Compact>
+      <Form.Item name="email" label="Work email" rules={[{ required: true, type: 'email', message: 'Enter a valid email' }]}>
+        <Input prefix={<MailOutlined />} autoComplete="email" />
+      </Form.Item>
+      <Form.Item name="password" label="Password" rules={[{ required: true, min: 8, message: 'At least 8 characters' }]}>
+        <Input.Password prefix={<LockOutlined />} autoComplete="new-password" />
+      </Form.Item>
+      <Button type="primary" htmlType="submit" size="large" block loading={busy}>Create company account</Button>
+      <Typography.Paragraph type="secondary" style={{ marginTop: 12, fontSize: 12 }}>
+        You'll be the company admin. Next you'll add your company details, then your employees.
+      </Typography.Paragraph>
+    </Form>
+  );
+}
+
+/** Single-company deployment: just the company's sign-in (company and admin login come from server settings). */
+function SingleCompanyEntry() {
+  const { data: config, isLoading } = useQuery({ queryKey: ['public-config'], queryFn: () => get('/auth/config') });
+  if (isLoading || !config) return <Spin />;
+  if (!config.configured) {
+    return (
+      <Result
+        status="info"
+        title="Not set up yet"
+        subTitle="The administrator needs to set ADMIN_EMAIL and ADMIN_PASSWORD on the server and restart it."
+      />
+    );
+  }
+  return (
+    <>
+      <Brand title={config.companyName} subtitle="Sign in with your work email" />
+      <LoginForm demo={String(config.companyName).startsWith('Acme') ? DEMO_COMPANY : []} />
+    </>
+  );
+}
+
+/** Root address: create a company (if sign-up is on), find your company, and the platform admin sign-in (if enabled). */
 function PlatformLogin() {
   const [slug, setSlug] = useState('');
+  const [mode, setMode] = useState<'signup' | 'find' | 'admin'>('signup');
   const go = () => slug.trim() && (window.location.href = tenantUrl(slug.trim().toLowerCase()));
+  const { data: config, isLoading } = useQuery({ queryKey: ['public-config'], queryFn: () => get('/auth/config') });
+  if (isLoading || !config) return <Spin />;
+
+  const finder = (
+    <>
+      <Typography.Text strong>Go to your company</Typography.Text>
+      <Space.Compact style={{ width: '100%', margin: '8px 0 4px' }}>
+        <Input size="large" placeholder="yourcompany" value={slug} onChange={(e) => setSlug(e.target.value)} onPressEnter={go} addonBefore={slugAddon().before} addonAfter={slugAddon().after} />
+        <Button size="large" type="primary" icon={<ArrowRightOutlined />} onClick={go} aria-label="Go to company" />
+      </Space.Compact>
+    </>
+  );
+
+  if (config.signup && mode === 'signup') {
+    return (
+      <>
+        <Brand title="Create your company account" subtitle="Leave, attendance and payroll for your team." />
+        <SignupForm />
+        <Divider plain style={{ fontSize: 12 }}>Already registered?</Divider>
+        <Button block onClick={() => setMode('find')}>Sign in to your company</Button>
+        {config.superAdmin && <Button type="link" block onClick={() => setMode('admin')}>Platform administrator sign-in</Button>}
+      </>
+    );
+  }
 
   return (
     <>
-      <Brand title="Sign in" subtitle="Platform administrators sign in here. Employees, use your company address." />
-      <Typography.Text strong>Employees: go to your company</Typography.Text>
-      <Space.Compact style={{ width: '100%', margin: '8px 0 4px' }}>
-        <Input size="large" placeholder="yourcompany" value={slug} onChange={(e) => setSlug(e.target.value)} onPressEnter={go} addonBefore={slugAddon().before} addonAfter={slugAddon().after} />
-        <Button size="large" type="primary" icon={<ArrowRightOutlined />} onClick={go} />
-      </Space.Compact>
-      <Divider plain style={{ fontSize: 12 }}>Platform administrator</Divider>
-      <LoginForm demo={[['Super Admin', 'superadmin@hrms.local']]} />
-      <Typography.Paragraph type="secondary" style={{ marginTop: 20, fontSize: 12, textAlign: 'center' }}>
-        New companies are set up by the platform administrator.
-      </Typography.Paragraph>
+      <Brand title="Sign in" subtitle="Employees and company admins sign in at their company's address." />
+      {finder}
+      {config.superAdmin && mode !== 'find' ? (
+        <>
+          <Divider plain style={{ fontSize: 12 }}>Platform administrator</Divider>
+          <LoginForm demo={[['Super Admin', 'superadmin@hrms.local']]} />
+        </>
+      ) : null}
+      {config.signup ? (
+        <Button type="link" block style={{ marginTop: 16 }} onClick={() => setMode('signup')}>New here? Create a company account</Button>
+      ) : (
+        <Typography.Paragraph type="secondary" style={{ marginTop: 20, fontSize: 12, textAlign: 'center' }}>
+          New companies are set up by the platform administrator.
+        </Typography.Paragraph>
+      )}
+      {config.superAdmin && mode === 'find' && (
+        <Button type="link" block onClick={() => setMode('admin')}>Platform administrator sign-in</Button>
+      )}
     </>
   );
 }
@@ -143,7 +264,7 @@ export default function Login() {
           <ThemeToggle size="small" />
         </div>
         <div className="auth-panel">
-          {slug ? <CompanyLogin slug={slug} /> : <PlatformLogin />}
+          {SINGLE_COMPANY ? <SingleCompanyEntry /> : slug ? <CompanyLogin slug={slug} /> : <PlatformLogin />}
         </div>
       </main>
     </div>

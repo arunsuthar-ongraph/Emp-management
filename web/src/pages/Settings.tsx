@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { App, Button, Card, Col, Divider, Form, Input, Radio, Row, Select, Space, Typography } from 'antd';
+import { Alert, App, Button, Card, Col, Divider, Form, Input, Radio, Row, Select, Space, Typography } from 'antd';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api, errMsg, get } from '../api';
 import { PageHeader } from '../components/common';
@@ -7,6 +8,9 @@ import { PageHeader } from '../components/common';
 export default function Settings() {
   const { message } = App.useApp();
   const [form] = Form.useForm();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const welcome = params.get('welcome') === '1'; // arrived straight from sign-up
   const { data } = useQuery({ queryKey: ['company'], queryFn: () => get('/settings/company') });
   const { data: states = [] } = useQuery({ queryKey: ['states'], queryFn: () => get('/payroll/states') });
   useEffect(() => {
@@ -22,6 +26,28 @@ export default function Settings() {
   return (
     <>
       <PageHeader title="Company settings" />
+      {welcome && (
+        <Alert
+          type="success"
+          showIcon
+          style={{ maxWidth: 820, marginBottom: 16 }}
+          message={`Welcome! ${data?.name || 'Your company'} is ready.`}
+          description={
+            <>
+              Three steps to get going:
+              <ol style={{ margin: '6px 0 8px', paddingLeft: 20 }}>
+                <li>Add your company details below (registered address, PAN, TAN, PF and ESI codes) and save.</li>
+                <li>Set up departments, for example Engineering, HR or Finance.</li>
+                <li>Add your employees and give them logins.</li>
+              </ol>
+              <Space wrap>
+                <Button size="small" onClick={() => navigate('/organization')}>Set up departments</Button>
+                <Button size="small" onClick={() => navigate('/employees')}>Add employees</Button>
+              </Space>
+            </>
+          }
+        />
+      )}
       <Card style={{ maxWidth: 820 }}>
         <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)}>
           <Row gutter={12}>

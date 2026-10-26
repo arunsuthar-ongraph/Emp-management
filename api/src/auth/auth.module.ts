@@ -1,15 +1,37 @@
-import { Body, Controller, Get, Injectable, Module, NotFoundException, Post, Req, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, HttpException, HttpStatus, Injectable, Module, NotFoundException, Post, Req, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { IsEmail, IsNotEmpty } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuthUser, CurrentUser, Public, tenantSlugFrom } from '../common/auth';
+import { AuthUser, CurrentUser, Public } from '../common/auth';
+import { requestTenantSlug } from '../common/tenant-context';
 import { ROLE_PERMISSIONS } from '../common/permissions';
 import { HierarchyService } from '../common/hierarchy';
+import { isSingleCompany, publicConfig, signupEnabled, superAdminEnabled } from '../common/config';
+import { provisionCompany, SLUG, SLUG_MSG } from '../platform/provisioning';
 
 class LoginDto {
   @IsEmail() email: string;
   @IsNotEmpty() password: string;
+}
+
+class SignupDto {
+  @IsNotEmpty() companyName: string;
+  @IsOptional() @Matches(SLUG, { message: SLUG_MSG }) slug?: string; // multi-company mode only
+  @IsOptional() @IsString() state?: string;
+  @IsNotEmpty() firstName: string;
+  @IsNotEmpty() lastName: string;
+  @IsEmail() email: string;
+  @MinLength(8, { message: 'Password must be at least 8 characters' }) password: string;
+}
+
+/** Public sign-up is open to anyone, so limit how many companies one address can create. */
+const signupLog = new Map<string, number[]>();
+function checkSignupRate(ip: string) {
+  const hourAgo = Date.now() - 3600_000;
+  const recent = (signupLog.get(ip) || []).filter((t) => t > hourAgo);
+  if (recent.length >= 5) throw new HttpException('Too many sign-ups from this network. Try again in an hour.', HttpStatus.TOO_MANY_REQUESTS);
+  signupLog.set(ip, [...recent, Date.now()]);
 }
 
 @Injectable()
@@ -26,12 +48,32 @@ export class AuthService {
       if (!tenant.isActive) throw new UnauthorizedException('This company account is suspended. Contact support.');
       user = await this.prisma.user.findFirst({ where: { tenantId: tenant.id, email } });
     } else {
+      if (isSingleCompany()) throw new UnauthorizedException('The app is not set up yet: set ADMIN_EMAIL and ADMIN_PASSWORD on the server');
+      if (!superAdminEnabled()) throw new UnauthorizedException('Sign in on your company address');
       user = await this.prisma.user.findFirst({ where: { tenantId: null, email, role: 'SUPER_ADMIN' } });
     }
     if (!user || !user.isActive || !(await bcrypt.compare(dto.password, user.passwordHash))) {
       throw new UnauthorizedException('Invalid email or password');
     }
     return this.issue(user.id);
+  }
+
+  /** Self-service: create a company and its first Company Admin, signed in straight away. */
+  /** Multi-company mode with PUBLIC_SIGNUP=true: self-service creation of a company. Off in single-company mode. */
+  async signup(dto: SignupDto, ip: string) {
+    if (!signupEnabled()) throw new NotFoundException();
+    if (!dto.slug) throw new BadRequestException('Choose a company address');
+    checkSignupRate(ip);
+    const { tenant, user } = await provisionCompany(this.prisma, { ...dto, slug: dto.slug });
+    return { ...(await this.issue(user.id)), slug: tenant.slug };
+  }
+
+  /** Public settings for the sign-in page. Single-company mode also returns the company name. */
+  async config() {
+    if (!isSingleCompany()) return publicConfig();
+    const slug = await requestTenantSlug({ headers: {} }, this.prisma);
+    const tenant = slug ? await this.prisma.tenant.findUnique({ where: { slug }, select: { name: true } }) : null;
+    return { ...publicConfig(), configured: !!tenant, companyName: tenant?.name ?? null };
   }
 
   /** Public info for the login page of a subdomain. */
@@ -82,14 +124,24 @@ export class AuthService {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private auth: AuthService) {}
+  constructor(private auth: AuthService, private prisma: PrismaService) {}
 
-  @Public() @Post('login') login(@Body() dto: LoginDto, @Req() req: any) {
-    return this.auth.login(dto, tenantSlugFrom(req));
+  @Public() @Post('login') async login(@Body() dto: LoginDto, @Req() req: any) {
+    return this.auth.login(dto, await requestTenantSlug(req, this.prisma));
   }
 
-  @Public() @Get('workspace') workspace(@Req() req: any) {
-    return this.auth.workspace(tenantSlugFrom(req));
+  /** Which sign-in options this deployment offers (super admin, public sign-up) and its company domain. */
+  @Public() @Get('config') config() {
+    return this.auth.config();
+  }
+
+  @Public() @Post('signup') signup(@Body() dto: SignupDto, @Req() req: any) {
+    const ip = String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
+    return this.auth.signup(dto, ip);
+  }
+
+  @Public() @Get('workspace') async workspace(@Req() req: any) {
+    return this.auth.workspace(await requestTenantSlug(req, this.prisma));
   }
 
   @Get('me') me(@CurrentUser() user: AuthUser) {

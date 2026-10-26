@@ -25,6 +25,14 @@ interface AuthCtx {
 const Ctx = createContext<AuthCtx>(null!);
 export const useAuth = () => useContext(Ctx);
 
+/** After public sign-up the new admin arrives with #token=… on their company address: keep it, clean the URL. */
+(function takeHandoffToken() {
+  const m = window.location.hash.match(/(?:^#|&)token=([^&]+)/);
+  if (!m) return;
+  localStorage.setItem(tokenKey(), decodeURIComponent(m[1]));
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+})();
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Me | null>(null);
   const [loading, setLoading] = useState(!!localStorage.getItem(tokenKey()));
