@@ -6,6 +6,7 @@ import { App as AntApp, ConfigProvider } from 'antd';
 import enIN from 'antd/locale/en_GB';
 import { AuthProvider } from './auth';
 import { ThemeProvider } from './theme';
+import { BASENAME } from './tenant';
 import App from './App';
 import './styles.css';
 
@@ -17,7 +18,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <ThemeProvider>
         <AntApp>
           <QueryClientProvider client={queryClient}>
-            <BrowserRouter>
+            <BrowserRouter basename={BASENAME}>
               <AuthProvider>
                 <App />
               </AuthProvider>

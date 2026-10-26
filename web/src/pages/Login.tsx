@@ -5,7 +5,7 @@ import { ArrowRightOutlined, LockOutlined, MailOutlined } from '@ant-design/icon
 import { useQuery } from '@tanstack/react-query';
 import { errMsg, get } from '../api';
 import { useAuth } from '../auth';
-import { platformUrl, ROOT_DOMAIN, tenantSlug, tenantUrl } from '../tenant';
+import { platformUrl, slugAddon, tenantAddress, tenantSlug, tenantUrl } from '../tenant';
 import { ThemeToggle } from '../components/AppLayout';
 
 const DEMO_COMPANY = [
@@ -81,7 +81,7 @@ function CompanyLogin({ slug }: { slug: string }) {
       <Result
         status="404"
         title="Company not found"
-        subTitle={<>There is no company at <b>{slug}.{ROOT_DOMAIN}</b>. Check the address with your HR team.</>}
+        subTitle={<>There is no company at <b>{tenantAddress(slug)}</b>. Check the address with your HR team.</>}
         extra={<Button href={platformUrl()}>Go to main site</Button>}
       />
     );
@@ -108,7 +108,7 @@ function PlatformLogin() {
       <Brand title="Sign in" subtitle="Platform administrators sign in here. Employees, use your company address." />
       <Typography.Text strong>Employees: go to your company</Typography.Text>
       <Space.Compact style={{ width: '100%', margin: '8px 0 4px' }}>
-        <Input size="large" placeholder="yourcompany" value={slug} onChange={(e) => setSlug(e.target.value)} onPressEnter={go} addonAfter={`.${ROOT_DOMAIN}`} />
+        <Input size="large" placeholder="yourcompany" value={slug} onChange={(e) => setSlug(e.target.value)} onPressEnter={go} addonBefore={slugAddon().before} addonAfter={slugAddon().after} />
         <Button size="large" type="primary" icon={<ArrowRightOutlined />} onClick={go} />
       </Space.Compact>
       <Divider plain style={{ fontSize: 12 }}>Platform administrator</Divider>

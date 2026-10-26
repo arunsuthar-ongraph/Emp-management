@@ -1,5 +1,6 @@
 import { Global, Injectable, Logger, Module } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import { ROOT_DOMAIN } from '../common/config';
 
 export interface Mail {
   to: string | string[];
@@ -36,7 +37,7 @@ export class MailService {
       return;
     }
     try {
-      await this.transport.sendMail({ from: process.env.MAIL_FROM || 'no-reply@localhost', ...mail });
+      await this.transport.sendMail({ from: process.env.MAIL_FROM || `no-reply@${ROOT_DOMAIN || 'localhost'}`, ...mail });
       this.log.log(`sent to=${mail.to.join(',')} subject="${mail.subject}"`);
     } catch (e) {
       if (attempt < 3) {

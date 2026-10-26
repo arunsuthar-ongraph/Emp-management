@@ -1,11 +1,11 @@
 import axios from 'axios';
 import dayjs from 'dayjs';
-import { tenantSlug } from './tenant';
+import { appPath, tenantSlug, tokenKey } from './tenant';
 
 export const api = axios.create({ baseURL: '/api' });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem(tokenKey());
   if (token) config.headers.Authorization = `Bearer ${token}`;
   const slug = tenantSlug();
   if (slug) config.headers['X-Tenant'] = slug;
@@ -16,8 +16,8 @@ api.interceptors.response.use(
   (r) => r,
   (err) => {
     if (err.response?.status === 401 && !err.config.url?.startsWith('/auth/')) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      localStorage.removeItem(tokenKey());
+      window.location.href = appPath('/login');
     }
     return Promise.reject(err);
   },

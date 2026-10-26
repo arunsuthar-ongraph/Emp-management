@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from './mail.service';
 import { emailLayout, esc } from './email-layout';
+import { companyUrl } from '../common/config';
 
 /**
  * Leave emails:
@@ -52,7 +53,7 @@ export class LeaveNotifier {
 
   private async context(tenantId: string) {
     const t = await this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
-    const base = (process.env.APP_URL || 'http://{slug}.localhost:5173').replace('{slug}', t.slug);
+    const base = companyUrl(t.slug);
     return { company: t.name, leaveUrl: `${base}/leave` };
   }
 

@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { api, get } from './api';
+import { appPath, tokenKey } from './tenant';
 
 export interface Me {
   id: string;
@@ -26,18 +27,18 @@ export const useAuth = () => useContext(Ctx);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Me | null>(null);
-  const [loading, setLoading] = useState(!!localStorage.getItem('token'));
+  const [loading, setLoading] = useState(!!localStorage.getItem(tokenKey()));
 
   useEffect(() => {
-    if (!localStorage.getItem('token')) return;
+    if (!localStorage.getItem(tokenKey())) return;
     get<Me>('/auth/me')
       .then(setUser)
-      .catch(() => localStorage.removeItem('token'))
+      .catch(() => localStorage.removeItem(tokenKey()))
       .finally(() => setLoading(false));
   }, []);
 
   const accept = (data: { token: string; user: Me }) => {
-    localStorage.setItem('token', data.token);
+    localStorage.setItem(tokenKey(), data.token);
     setUser(data.user);
   };
 
@@ -47,9 +48,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login: async (email, password) => accept((await api.post('/auth/login', { email, password })).data),
     refresh: async () => setUser(await get<Me>('/auth/me')),
     logout: () => {
-      localStorage.removeItem('token');
+      localStorage.removeItem(tokenKey());
       setUser(null);
-      window.location.href = '/login';
+      window.location.href = appPath('/login');
     },
     can: (perm) => !!user?.permissions.includes(perm),
   };

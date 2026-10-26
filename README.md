@@ -26,7 +26,7 @@ Each company has its own subdomain. There is no public sign-up: the platform Sup
 
 A login only works on its own company's subdomain, and a session token is rejected on any other address. The same email may exist in different companies. A suspended company cannot sign in.
 
-In production, set `VITE_ROOT_DOMAIN` in `web/.env` (e.g. `peopledesk.com`) and point a wildcard DNS record (`*.peopledesk.com`) at the app.
+Locally, both `acme.localhost:5173` and `localhost:5173/acme` work. In production a company can be reached by path on any address (`https://<host>/acme`), or by subdomain once `ROOT_DOMAIN` is set with a wildcard DNS record.
 
 ## Demo logins (password `Password@123`)
 
@@ -89,14 +89,16 @@ The app deploys as **one Railway service**: the API also serves the built fronte
 | `NODE_ENV` | `production` |
 | `JWT_SECRET` | at least 32 random characters (`openssl rand -hex 32`). The app won't start without it |
 | `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | first platform admin, created on the first start (password of at least 10 characters). Remove the password afterwards |
-| `VITE_ROOT_DOMAIN` | your domain, e.g. `peopledesk.in`. It's built into the frontend, so redeploy after changing it |
-| `APP_URL` | `https://{slug}.peopledesk.in` (links in emails) |
+| `ROOT_DOMAIN` | only with your own domain + wildcard, e.g. `peopledesk.in`. Leave it unset on Railway's generated domain. Read when the app starts, so no rebuild is needed |
+| `APP_URL` | optional link format for emails: `https://{slug}.peopledesk.in` or `https://<app>.up.railway.app/{slug}`. Worked out automatically when unset |
 | `UPLOAD_DIR` | `/data/uploads` |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | your email provider. Leave `SMTP_HOST` empty to only log emails |
 
 **3. Add a Volume** mounted at `/data`. Profile pictures are stored there; without a volume they're lost on every deploy.
 
-**4. Add your domain.** Each company signs in on its own subdomain, so add **both** `peopledesk.in` and the wildcard `*.peopledesk.in` as custom domains in Railway, and create the DNS records Railway shows (including the `_acme-challenge` record for the wildcard certificate). On the default `*.up.railway.app` address only the platform admin sign-in works.
+**4. Company addresses.** Each company gets its own address. Two styles work, and you can use both:
+- **Railway's generated domain (works straight away):** companies sign in at `https://<app>.up.railway.app/<company>`, e.g. `https://hrms-production.up.railway.app/acme`. The Super Admin signs in at `https://<app>.up.railway.app/`. Nothing to configure: email links use Railway's `RAILWAY_PUBLIC_DOMAIN` automatically.
+- **Your own domain (optional):** add `peopledesk.in` and the wildcard `*.peopledesk.in` as custom domains in Railway, create the DNS records it shows (including `_acme-challenge` for the wildcard certificate), and set `ROOT_DOMAIN=peopledesk.in`. Companies then sign in at `acme.peopledesk.in`; path addresses keep working too.
 
 **What happens on each deploy:** `npm run build` (Prisma client, API and frontend), then `prisma migrate deploy` as the pre-deploy step, then `npm start`. Railway waits for `/api/health` (which also checks the database) before switching traffic.
 
