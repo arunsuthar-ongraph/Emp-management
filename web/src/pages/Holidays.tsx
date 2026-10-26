@@ -33,15 +33,15 @@ export default function Holidays() {
   return (
     <>
       <PageHeader
-        title="Holiday Calendar"
+        title="Holiday calendar"
         extra={
           <>
             <Select value={year} onChange={setYear} style={{ width: 110 }} options={[-1, 0, 1].map((o) => ({ value: dayjs().year() + o, label: dayjs().year() + o }))} />
-            {canWrite && <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Add Holiday</Button>}
+            {canWrite && <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Add holiday</Button>}
           </>
         }
       />
-      <Card bordered={false}>
+      <Card>
         <Table
           rowKey="id"
           loading={isLoading}
@@ -66,7 +66,7 @@ export default function Holidays() {
           ]}
         />
       </Card>
-      <Modal title="Add Holiday" open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()} confirmLoading={add.isPending}>
+      <Modal title="Add holiday" open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()} confirmLoading={add.isPending}>
         <Form form={form} layout="vertical" onFinish={(v) => add.mutate(v)}>
           <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="date" label="Date" rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} format="DD MMM YYYY" /></Form.Item>

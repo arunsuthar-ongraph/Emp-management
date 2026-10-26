@@ -5,7 +5,6 @@ import { AuthUser, CurrentUser, Permissions, requireEmployee } from '../common/a
 import { P } from '../common/permissions';
 import { LeaveService } from './leave.service';
 import { LeaveNotifier } from '../notifications/leave-notifier';
-import { Feature } from '../billing/billing.module';
 
 class LeaveTypeDto {
   @IsNotEmpty() name: string;
@@ -29,7 +28,6 @@ class DecisionDto {
 }
 
 @Controller('leave')
-@Feature('leave')
 export class LeaveController {
   constructor(private svc: LeaveService) {}
 

@@ -7,7 +7,7 @@ import { hasPermission, P } from '../common/permissions';
 import { monthRange, todayIST } from '../common/dates';
 import { AttendanceModule } from '../attendance/attendance.module';
 import { AttendanceService } from '../attendance/attendance.service';
-import { Feature } from '../billing/billing.module';
+import { STATES } from './statutory';
 import { annualTaxNewRegime, calculatePayslip, structureFromCtc } from './payroll-calculator';
 
 class RunDto {
@@ -171,9 +171,12 @@ export class PayrollService {
 }
 
 @Controller('payroll')
-@Feature('payroll')
 export class PayrollController {
   constructor(private svc: PayrollService) {}
+
+  @Get('states') states() {
+    return STATES;
+  }
 
   @Post('calculator') @Permissions(P.PAYROLL_MANAGE) calc(@Body() dto: CalcDto) {
     return this.svc.calculator(dto.ctcAnnual, dto.state || 'MH');

@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
-    "build": "nest build",
+    "build": "prisma generate && nest build",
     "start": "node dist/main",
     "db:migrate": "prisma migrate dev --name init",
     "db:generate": "prisma generate",
-    "seed": "ts-node --transpile-only prisma/seed.ts"
+    "seed": "ts-node --transpile-only prisma/seed.ts",
+    "db:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
@@ -22,6 +23,7 @@
     "dotenv": "^16.4.5",
     "multer": "^2.4.0",
     "nodemailer": "^6.10.1",
+    "prisma": "^6.19.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
@@ -32,8 +34,10 @@
     "@types/multer": "^1.4.13",
     "@types/node": "^20.14.0",
     "@types/nodemailer": "^6.4.24",
-    "prisma": "^6.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

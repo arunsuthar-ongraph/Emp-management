@@ -25,7 +25,7 @@ function DepartmentModal({ open, initial, onClose }: { open: boolean; initial: P
 
   return (
     <Modal
-      title={editing ? `Edit ${initial?.name}` : initial?.parentId ? 'Add Sub-department' : 'Add Department'}
+      title={editing ? `Edit ${initial?.name}` : initial?.parentId ? 'Add sub-department' : 'Add department'}
       open={open}
       onCancel={onClose}
       onOk={() => form.submit()}
@@ -76,7 +76,7 @@ function MembersDrawer({ dept, onClose }: { dept: DeptNode | null; onClose: () =
         <>
           <Card size="small" style={{ marginBottom: 16 }}>
             <Space wrap>
-              <CrownOutlined style={{ color: '#f59e0b' }} />
+              <CrownOutlined style={{ color: 'var(--warn-ink)' }} />
               Head: {dept.head ? <b>{dept.head.firstName} {dept.head.lastName}</b> : <Tag color="red">Not assigned</Tag>}
               <Tag icon={<TeamOutlined />}>{dept.total} members incl. sub-departments</Tag>
             </Space>
@@ -124,7 +124,7 @@ function Departments() {
   const noHead = list.filter((d) => !d.headId).length;
 
   return (
-    <Card bordered={false} extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setModal({})}>Add Department</Button>}
+    <Card extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setModal({})}>Add department</Button>}
       title={<Typography.Text type="secondary" style={{ fontWeight: 400 }}>Group employees by function or technology stack; the head approves their leave.</Typography.Text>}>
       {noHead > 0 && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={`${noHead} department(s) have no head. Their leave requests go to the reporting manager or HR.`} />}
       <Table
@@ -140,7 +140,7 @@ function Departments() {
             title: 'Head',
             render: (_, d: DeptNode) =>
               d.head ? (
-                <Space><Avatar size="small" style={{ background: '#f59e0b' }} icon={<CrownOutlined />} />{d.head.firstName} {d.head.lastName}</Space>
+                <Space><Avatar size="small" style={{ background: 'var(--warn-soft)', color: 'var(--warn-ink)' }} icon={<CrownOutlined />} />{d.head.firstName} {d.head.lastName}</Space>
               ) : (
                 <Tag color="red">Not assigned</Tag>
               ),
@@ -176,11 +176,11 @@ const toTreeNode = (e: ChartNode) => ({
   isLeaf: e.reports === 0,
   title: (
     <Space size={6} wrap style={{ padding: '2px 0' }}>
-      <Avatar size="small" style={{ background: e.heads.length ? '#f59e0b' : '#6366f1' }}>{e.name[0]}</Avatar>
+      <Avatar size="small" style={e.heads.length ? { background: 'var(--warn-soft)', color: 'var(--warn-ink)' } : { background: 'var(--brand-soft)', color: 'var(--brand)' }}>{e.name[0]}</Avatar>
       <b>{e.name}</b>
       <Typography.Text type="secondary" style={{ fontSize: 12 }}>{[e.designation, e.department].filter(Boolean).join(' · ')}</Typography.Text>
       {e.heads.map((h) => <Tag key={h} color="gold" icon={<CrownOutlined />}>Head of {h}</Tag>)}
-      {e.reports > 0 && <Badge count={e.reports} color="#4f46e5" title="Direct reports" />}
+      {e.reports > 0 && <Badge count={e.reports} color="var(--brand)" title="Direct reports" />}
     </Space>
   ),
 });
@@ -193,7 +193,7 @@ function OrgChart() {
   const treeData = attach(roots.map(toTreeNode));
 
   return (
-    <Card bordered={false} loading={isLoading} title={<Typography.Text type="secondary" style={{ fontWeight: 400 }}>Reporting lines. Expand a person to load their direct reports.</Typography.Text>}>
+    <Card loading={isLoading} title={<Typography.Text type="secondary" style={{ fontWeight: 400 }}>Reporting lines. Expand a person to load their direct reports.</Typography.Text>}>
       <Tree
         showLine
         blockNode
@@ -226,7 +226,7 @@ function Designations() {
   const remove = useMutation({ mutationFn: (id: string) => api.delete(`/designations/${id}`), onSuccess: () => qc.invalidateQueries({ queryKey: ['designations'] }) });
 
   return (
-    <Card bordered={false} style={{ maxWidth: 640 }}>
+    <Card style={{ maxWidth: 640 }}>
       <Space.Compact style={{ width: '100%', marginBottom: 12 }}>
         <Input placeholder="New designation" value={name} onChange={(e) => setName(e.target.value)} onPressEnter={() => name.trim() && add.mutate()} />
         <Button type="primary" icon={<PlusOutlined />} disabled={!name.trim()} onClick={() => add.mutate()}>Add</Button>
@@ -250,8 +250,8 @@ export default function Organization() {
       <PageHeader title="Organization" />
       <Tabs
         items={[
-          { key: 'departments', label: 'Departments & Stacks', children: <Departments /> },
-          { key: 'chart', label: 'Org Chart', children: <OrgChart /> },
+          { key: 'departments', label: 'Departments & stacks', children: <Departments /> },
+          { key: 'chart', label: 'Org chart', children: <OrgChart /> },
           { key: 'designations', label: 'Designations', children: <Designations /> },
         ]}
       />

@@ -10,9 +10,13 @@
     "setup": "npm run db:up && npm run mail:up && npm run db:migrate -w api && npm run seed -w api",
     "dev": "concurrently -n api,web -c blue,green \"npm run dev -w api\" \"npm run dev -w web\"",
     "build": "npm run build -w api && npm run build -w web",
-    "mail:up": "docker start hrms-mailpit 2>/dev/null || docker run -d --name hrms-mailpit --restart unless-stopped -p 1025:1025 -p 8025:8025 axllent/mailpit:v1.21.8"
+    "mail:up": "docker start hrms-mailpit 2>/dev/null || docker run -d --name hrms-mailpit --restart unless-stopped -p 1025:1025 -p 8025:8025 axllent/mailpit:v1.21.8",
+    "start": "npm run start -w api"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

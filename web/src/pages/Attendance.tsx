@@ -5,6 +5,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import { api, errMsg, fmtTime, get } from '../api';
 import { useAuth } from '../auth';
 import { ClockWidget, PageHeader, StatusTag } from '../components/common';
+import HoursCandleChart from '../components/HoursCandleChart';
 
 const hrs = (m?: number) => (m ? `${Math.floor(m / 60)}h ${m % 60}m` : '—');
 
@@ -38,20 +39,23 @@ function MyAttendance() {
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} lg={8}><ClockWidget /></Col>
         <Col xs={24} lg={16}>
-          <Card bordered={false} style={{ height: '100%' }} title={`Summary – ${month.format('MMMM YYYY')}`}
-            extra={<DatePicker picker="month" value={month} onChange={(v) => v && setMonth(v)} allowClear={false} disabledDate={(d) => d.isAfter(dayjs(), 'month')} />}>
+          <Card style={{ height: '100%' }} title={`Summary – ${month.format('MMMM YYYY')}`}
+            extra={<DatePicker picker="month" format="MMM YYYY" value={month} onChange={(v) => v && setMonth(v)} allowClear={false} disabledDate={(d) => d.isAfter(dayjs(), 'month')} />}>
             <Row gutter={[16, 16]}>
               <Col xs={12} sm={8}><Statistic title={month.isSame(dayjs(), 'month') ? 'Working days till today' : 'Working days'} value={data?.workingDays ?? 0} /></Col>
-              <Col xs={12} sm={8}><Statistic title="Present" value={data?.present ?? 0} valueStyle={{ color: '#10b981' }} /></Col>
-              <Col xs={12} sm={8}><Statistic title="Half days" value={data?.halfDays ?? 0} valueStyle={{ color: '#f59e0b' }} /></Col>
-              <Col xs={12} sm={8}><Statistic title="Paid leave" value={data?.paidLeave ?? 0} valueStyle={{ color: '#4f46e5' }} /></Col>
-              <Col xs={12} sm={8}><Statistic title="Absent" value={data?.absent ?? 0} valueStyle={{ color: '#ef4444' }} /></Col>
-              <Col xs={12} sm={8}><Statistic title="Loss of pay days" value={data?.lopDays ?? 0} valueStyle={{ color: '#ef4444' }} /></Col>
+              <Col xs={12} sm={8}><Statistic title="Present" value={data?.present ?? 0}  /></Col>
+              <Col xs={12} sm={8}><Statistic title="Half days" value={data?.halfDays ?? 0}  /></Col>
+              <Col xs={12} sm={8}><Statistic title="Paid leave" value={data?.paidLeave ?? 0}  /></Col>
+              <Col xs={12} sm={8}><Statistic title="Absent" value={data?.absent ?? 0} valueStyle={{ color: data?.absent ? 'var(--danger-ink)' : undefined }} /></Col>
+              <Col xs={12} sm={8}><Statistic title="Loss of pay days" value={data?.lopDays ?? 0} valueStyle={{ color: data?.lopDays ? 'var(--danger-ink)' : undefined }} /></Col>
             </Row>
           </Card>
         </Col>
       </Row>
-      <Card bordered={false}>
+      <Card title={`Hours per day – ${month.format('MMMM YYYY')}`} style={{ marginBottom: 16 }} loading={isLoading}>
+        <HoursCandleChart days={data?.days || []} />
+      </Card>
+      <Card>
         <Table
           rowKey="date"
           loading={isLoading}
@@ -96,7 +100,7 @@ function DailyAttendance() {
 
   return (
     <Card
-      bordered={false}
+     
       title={
         <span>
           {date.format('dddd, DD MMM YYYY')} &nbsp;
@@ -148,8 +152,8 @@ export default function Attendance() {
       <Tabs
         destroyInactiveTabPane
         items={[
-          { key: 'me', label: 'My Attendance', children: <MyAttendance /> },
-          ...(user?.isLead || can('attendance.all') ? [{ key: 'daily', label: can('attendance.all') ? 'Company Attendance' : 'Team Attendance', children: <DailyAttendance /> }] : []),
+          { key: 'me', label: 'My attendance', children: <MyAttendance /> },
+          ...(user?.isLead || can('attendance.all') ? [{ key: 'daily', label: can('attendance.all') ? 'Company attendance' : 'Team attendance', children: <DailyAttendance /> }] : []),
         ]}
       />
     </>

@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { errMsg, get } from '../api';
 import { useAuth } from '../auth';
 import { platformUrl, ROOT_DOMAIN, tenantSlug, tenantUrl } from '../tenant';
+import { ThemeToggle } from '../components/AppLayout';
 
 const DEMO_COMPANY = [
   ['Company Admin', 'admin@acme.com'],
@@ -17,9 +18,8 @@ const DEMO_COMPANY = [
 
 function Brand({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div style={{ textAlign: 'center', marginBottom: 24 }}>
-      <div style={{ background: '#4f46e5', color: '#fff', width: 48, height: 48, borderRadius: 12, display: 'inline-grid', placeItems: 'center', fontSize: 22, fontWeight: 700 }}>P</div>
-      <Typography.Title level={3} style={{ margin: '12px 0 0' }}>{title}</Typography.Title>
+    <div style={{ marginBottom: 28 }}>
+      <Typography.Title level={3} style={{ margin: 0, fontWeight: 600 }}>{title}</Typography.Title>
       <Typography.Text type="secondary">{subtitle}</Typography.Text>
     </div>
   );
@@ -88,7 +88,7 @@ function CompanyLogin({ slug }: { slug: string }) {
   }
   return (
     <>
-      <Brand title={data.name} subtitle="Sign in to your employee portal" />
+      <Brand title={data.name} subtitle="Sign in with your work email" />
       {!data.isActive && <Alert type="error" showIcon style={{ marginBottom: 16 }} message="This company account is suspended. Contact support." />}
       <LoginForm demo={slug === 'acme' ? DEMO_COMPANY : []} />
       <Typography.Paragraph type="secondary" style={{ marginTop: 20, fontSize: 12, textAlign: 'center' }}>
@@ -105,7 +105,7 @@ function PlatformLogin() {
 
   return (
     <>
-      <Brand title="PeopleDesk HRMS" subtitle="Leave, attendance & payroll for Indian companies" />
+      <Brand title="Sign in" subtitle="Platform administrators sign in here. Employees, use your company address." />
       <Typography.Text strong>Employees: go to your company</Typography.Text>
       <Space.Compact style={{ width: '100%', margin: '8px 0 4px' }}>
         <Input size="large" placeholder="yourcompany" value={slug} onChange={(e) => setSlug(e.target.value)} onPressEnter={go} addonAfter={`.${ROOT_DOMAIN}`} />
@@ -123,10 +123,29 @@ function PlatformLogin() {
 export default function Login() {
   const slug = tenantSlug();
   return (
-    <div className="auth-bg">
-      <Card style={{ width: '100%', maxWidth: 440 }} styles={{ body: { padding: 32 } }}>
-        {slug ? <CompanyLogin slug={slug} /> : <PlatformLogin />}
-      </Card>
+    <div className="auth">
+      <aside className="auth-side">
+        <div className="brand" style={{ padding: 0, border: 0, height: 'auto' }}>
+          <span className="brand-mark" aria-hidden>P</span>
+          <span className="brand-name">PeopleDesk</span>
+        </div>
+        <div>
+          <h1>Leave, attendance and payroll in one place.</h1>
+          <p>
+            Employees check in and apply for leave. Managers approve from the same screen. On payday, PF, ESI,
+            professional tax and TDS are worked out from the month's attendance.
+          </p>
+        </div>
+        <Typography.Text type="secondary" style={{ fontSize: 13 }}>Built for companies in India</Typography.Text>
+      </aside>
+      <main className="auth-main" style={{ position: 'relative' }}>
+        <div style={{ position: 'absolute', top: 20, right: 24 }}>
+          <ThemeToggle size="small" />
+        </div>
+        <div className="auth-panel">
+          {slug ? <CompanyLogin slug={slug} /> : <PlatformLogin />}
+        </div>
+      </main>
     </div>
   );
 }

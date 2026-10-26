@@ -95,7 +95,7 @@ function ApplyModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   });
 
   return (
-    <Modal title="Apply Leave" open={open} onCancel={onClose} onOk={() => form.submit()} okText="Submit" confirmLoading={apply.isPending} destroyOnClose>
+    <Modal title="Apply for leave" open={open} onCancel={onClose} onOk={() => form.submit()} okText="Submit" confirmLoading={apply.isPending} destroyOnClose>
       <Form form={form} layout="vertical" onFinish={(v) => apply.mutate(v)}>
         <Form.Item name="leaveTypeId" label="Leave type" rules={[{ required: true }]}>
           <Select
@@ -142,7 +142,7 @@ function MyLeave() {
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         {balances.map((b: any) => (
           <Col xs={12} md={6} key={b.code}>
-            <Card bordered={false}>
+            <Card>
               <Typography.Text type="secondary">{b.name}</Typography.Text>
               <div style={{ fontSize: 28, fontWeight: 700 }}>{b.available}</div>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -152,7 +152,7 @@ function MyLeave() {
           </Col>
         ))}
       </Row>
-      <Card bordered={false} title="My Requests" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Apply Leave</Button>}>
+      <Card title="My requests" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Apply for leave</Button>}>
         <Table
           rowKey="id"
           loading={isLoading}
@@ -182,7 +182,7 @@ function MyLeave() {
 function Approvals() {
   const { data = [], isLoading } = useQuery({ queryKey: ['leave-pending'], queryFn: () => get('/leave/requests/pending') });
   return (
-    <Card bordered={false}>
+    <Card>
       <Table
         rowKey="id"
         loading={isLoading}
@@ -210,7 +210,7 @@ function Approvals() {
 function TeamRequests() {
   const { data = [], isLoading } = useQuery({ queryKey: ['leave-team'], queryFn: () => get('/leave/requests/team') });
   return (
-    <Card bordered={false} title={<Typography.Text type="secondary" style={{ fontWeight: 400 }}>Leave of everyone you lead: direct and indirect reports, and members of departments you head.</Typography.Text>}>
+    <Card title={<Typography.Text type="secondary" style={{ fontWeight: 400 }}>Leave of everyone you lead: direct and indirect reports, and members of departments you head.</Typography.Text>}>
       <Table
         rowKey="id"
         loading={isLoading}
@@ -226,7 +226,7 @@ function AllRequests() {
   const [status, setStatus] = useState<string>();
   const { data = [], isLoading } = useQuery({ queryKey: ['leave-all', status], queryFn: () => get('/leave/requests', { status }) });
   return (
-    <Card bordered={false} extra={
+    <Card extra={
       <Select placeholder="All statuses" allowClear style={{ width: 160 }} onChange={setStatus}
         options={['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'].map((s) => ({ value: s, label: s }))} />
     }>
@@ -270,7 +270,7 @@ function LeaveTypes() {
   };
 
   return (
-    <Card bordered={false} extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => open(null)}>Add Leave Type</Button>}>
+    <Card extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => open(null)}>Add leave type</Button>}>
       <Table
         rowKey="id"
         loading={isLoading}
@@ -286,7 +286,7 @@ function LeaveTypes() {
           { title: '', render: (_, t: any) => <Button size="small" onClick={() => open(t)}>Edit</Button> },
         ]}
       />
-      <Modal title={editing ? 'Edit Leave Type' : 'Add Leave Type'} open={editing !== undefined} onCancel={() => setEditing(undefined)} onOk={() => form.submit()} confirmLoading={save.isPending}>
+      <Modal title={editing ? 'Edit leave type' : 'Add leave type'} open={editing !== undefined} onCancel={() => setEditing(undefined)} onOk={() => form.submit()} confirmLoading={save.isPending}>
         <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)}>
           <Row gutter={12}>
             <Col span={16}><Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item></Col>
@@ -310,13 +310,13 @@ export default function Leave() {
   const { data: pending = [] } = useQuery({ queryKey: ['leave-pending'], queryFn: () => get('/leave/requests/pending'), enabled: approver });
 
   const tabs = [
-    { key: 'me', label: 'My Leave', children: <MyLeave /> },
+    { key: 'me', label: 'My leave', children: <MyLeave /> },
     ...(approver ? [{ key: 'approvals', label: <Badge count={pending.length} offset={[12, 0]}>Approvals</Badge>, children: <Approvals /> }] : []),
-    ...(user?.isLead ? [{ key: 'team', label: 'Team Requests', children: <TeamRequests /> }] : []),
+    ...(user?.isLead ? [{ key: 'team', label: 'Team requests', children: <TeamRequests /> }] : []),
     ...(can('leave.manage')
       ? [
-          { key: 'all', label: 'All Requests', children: <AllRequests /> },
-          { key: 'types', label: 'Leave Types', children: <LeaveTypes /> },
+          { key: 'all', label: 'All requests', children: <AllRequests /> },
+          { key: 'types', label: 'Leave types', children: <LeaveTypes /> },
         ]
       : []),
   ];

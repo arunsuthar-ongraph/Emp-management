@@ -74,6 +74,36 @@ Emails go out in the background after the change is saved, with up to 3 attempts
 - **Production:** set `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` and `APP_URL` in `api/.env` (e.g. Amazon SES, SendGrid, Zoho, Google Workspace). With `SMTP_HOST` empty, emails are only logged.
 - The seed script never sends emails.
 
+## Deploying to Railway
+
+The app deploys as **one Railway service**: the API also serves the built frontend, so there's no separate web service and no CORS setup. `railway.json` sets the build, start, migration and health check commands.
+
+**1. Create the project**
+- **New project → Deploy from GitHub repo**, using the repository root (`railway.json` is picked up automatically).
+- **Add → Database → PostgreSQL**, then on the app service set `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
+
+**2. Set variables on the app service**
+
+| Variable | Value |
+|---|---|
+| `NODE_ENV` | `production` |
+| `JWT_SECRET` | at least 32 random characters (`openssl rand -hex 32`). The app won't start without it |
+| `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | first platform admin, created on the first start (password of at least 10 characters). Remove the password afterwards |
+| `VITE_ROOT_DOMAIN` | your domain, e.g. `peopledesk.in`. It's built into the frontend, so redeploy after changing it |
+| `APP_URL` | `https://{slug}.peopledesk.in` (links in emails) |
+| `UPLOAD_DIR` | `/data/uploads` |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | your email provider. Leave `SMTP_HOST` empty to only log emails |
+
+**3. Add a Volume** mounted at `/data`. Profile pictures are stored there; without a volume they're lost on every deploy.
+
+**4. Add your domain.** Each company signs in on its own subdomain, so add **both** `peopledesk.in` and the wildcard `*.peopledesk.in` as custom domains in Railway, and create the DNS records Railway shows (including the `_acme-challenge` record for the wildcard certificate). On the default `*.up.railway.app` address only the platform admin sign-in works.
+
+**What happens on each deploy:** `npm run build` (Prisma client, API and frontend), then `prisma migrate deploy` as the pre-deploy step, then `npm start`. Railway waits for `/api/health` (which also checks the database) before switching traffic.
+
+**Don't run `npm run seed` in production.** It's demo data and deletes and recreates the "acme" company.
+
+**Run one replica.** Uploads live on the volume (attached to one instance), and leave emails are sent from the app process.
+
 ## Where things live
 
 - Role → permission map: `api/src/common/permissions.ts` (mirrored in the web menu)

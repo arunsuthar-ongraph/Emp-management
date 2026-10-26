@@ -5,3 +5,4 @@ dist/
 
 # user uploads (profile pictures)
 api/uploads/
+*.tsbuildinfo

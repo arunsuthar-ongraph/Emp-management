@@ -117,13 +117,13 @@ export default function Employees() {
             <DepartmentSelect value={filters.departmentId} onChange={(v) => setFilters((f) => ({ ...f, departmentId: v || undefined, page: 1 }))} placeholder="All departments" style={{ width: 200 }} />
             <Select value={filters.status || 'ALL'} style={{ width: 120 }} onChange={(v) => setFilters((f) => ({ ...f, status: v === 'ALL' ? undefined : v, page: 1 }))}
               options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'INACTIVE', label: 'Exited' }, { value: 'ALL', label: 'All' }]} />
-            {canWrite && <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm()}>Add Employee</Button>}
+            {canWrite && <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm()}>Add employee</Button>}
           </>
         }
       />
 
       {canWrite && selected.length > 0 && (
-        <Space style={{ marginBottom: 12, padding: '8px 12px', background: '#eef2ff', borderRadius: 8, width: '100%' }} wrap>
+        <Space style={{ marginBottom: 12, padding: '8px 12px', background: 'var(--brand-soft)', borderRadius: 8, width: '100%' }} wrap>
           <b>{selected.length} selected</b>
           <Button size="small" icon={<ApartmentOutlined />} onClick={() => setBulk('department')}>Move to department</Button>
           <Button size="small" icon={<UserSwitchOutlined />} onClick={() => setBulk('manager')}>Change reporting manager</Button>
@@ -150,7 +150,7 @@ export default function Employees() {
             title: 'Employee',
             render: (_, e: any) => (
               <Space>
-                <Avatar src={e.user?.avatarUrl || undefined} style={{ background: '#6366f1' }}>{e.firstName[0]}</Avatar>
+                <Avatar src={e.user?.avatarUrl || undefined} style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>{e.firstName[0]}</Avatar>
                 <div>
                   <div style={{ fontWeight: 500 }}>{e.firstName} {e.lastName}</div>
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>{e.code} · {e.email}</Typography.Text>
@@ -189,7 +189,7 @@ export default function Employees() {
       <BulkModal kind={bulk} ids={selected} onClose={(done) => { setBulk(null); if (done) { setSelected([]); refresh(); } }} />
 
       <Drawer
-        title={editing ? `Edit ${editing.firstName} ${editing.lastName}` : 'Add Employee'}
+        title={editing ? `Edit ${editing.firstName} ${editing.lastName}` : 'Add employee'}
         width={Math.min(640, window.innerWidth)}
         open={open}
         onClose={() => setOpen(false)}

@@ -9,7 +9,6 @@ import { HierarchyService } from '../src/common/hierarchy';
 import { AttendanceService } from '../src/attendance/attendance.service';
 import { LeaveService } from '../src/leave/leave.service';
 import { PayrollService } from '../src/payroll/payroll.module';
-import { BillingService } from '../src/billing/billing.service';
 
 const prisma = new PrismaClient();
 const PASSWORD = 'Password@123';
@@ -58,7 +57,7 @@ async function main() {
   const year = today.getUTCFullYear();
 
   // Reset previous demo data only (leave requests first: their approval steps reference employees too)
-  const old = await prisma.tenant.findMany({ where: { OR: [{ name: COMPANY }, { slug: { in: ['acme', 'initech'] } }] }, select: { id: true } });
+  const old = await prisma.tenant.findMany({ where: { OR: [{ name: COMPANY }, { slug: 'acme' }] }, select: { id: true } });
   await prisma.leaveRequest.deleteMany({ where: { tenantId: { in: old.map((t) => t.id) } } });
   await prisma.tenant.deleteMany({ where: { id: { in: old.map((t) => t.id) } } });
   await prisma.user.deleteMany({ where: { email: 'superadmin@hrms.local', tenantId: null } });
@@ -216,45 +215,6 @@ async function main() {
     await payroll.finalize(authAs, run.id);
   }
 
-  // ---------- Subscription plans & billing ----------
-  const PLANS = [
-    { code: 'starter', name: 'Starter', description: 'Leave and attendance for small teams', pricePerEmployee: 29, minMonthly: 499, maxEmployees: 25, features: ['leave', 'attendance'], trialDays: 14, sortOrder: 1 },
-    { code: 'growth', name: 'Growth', description: 'Everything in Starter plus payroll', pricePerEmployee: 59, minMonthly: 999, maxEmployees: 200, features: ['leave', 'attendance', 'payroll'], trialDays: 14, sortOrder: 2 },
-    { code: 'enterprise', name: 'Enterprise', description: 'Unlimited employees, priority support', pricePerEmployee: 89, minMonthly: 9999, maxEmployees: null, features: ['leave', 'attendance', 'payroll'], trialDays: 30, sortOrder: 3 },
-  ];
-  for (const p of PLANS) await prisma.plan.upsert({ where: { code: p.code }, create: p, update: p });
-  const plan = Object.fromEntries((await prisma.plan.findMany()).map((p) => [p.code, p]));
-  const billing = new BillingService(prisma as any, { send: () => undefined } as any);
-
-  // Acme: Growth, monthly, paid up; the current period ends on the 1st of next month
-  const periodStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
-  const acmeSub = await prisma.subscription.create({
-    data: { tenantId: tenant.id, planId: plan.growth.id, status: 'ACTIVE', billingCycle: 'MONTHLY', currentPeriodStart: periodStart, currentPeriodEnd: new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1)) },
-  });
-  const activeCount = await prisma.employee.count({ where: { tenantId: tenant.id, status: 'ACTIVE' } });
-  const invYear = today.getUTCFullYear();
-  const existingInv = await prisma.invoice.count({ where: { number: { startsWith: `INV-${invYear}-` } } });
-  for (let back = 2, n = 1; back >= 0; back--, n++) {
-    const ps = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - back, 1));
-    const pe = new Date(Date.UTC(ps.getUTCFullYear(), ps.getUTCMonth() + 1, 1));
-    const price = billing.price(plan.growth, 'MONTHLY', activeCount);
-    await prisma.invoice.create({
-      data: {
-        number: `INV-${invYear}-${String(existingInv + n).padStart(4, '0')}`, tenantId: tenant.id, subscriptionId: acmeSub.id, planId: plan.growth.id, billingCycle: 'MONTHLY',
-        periodStart: ps, periodEnd: pe, employeeCount: activeCount, unitPrice: plan.growth.pricePerEmployee, months: 1,
-        subtotal: price.subtotal, cgst: price.gst / 2, sgst: price.gst / 2, igst: 0, total: price.total,
-        status: 'PAID', dueDate: ps, paidAt: addDays(ps, 2), paymentMethod: back % 2 ? 'UPI' : 'Bank transfer', paymentRef: `UTR${String(882100 + n)}`,
-      },
-    });
-  }
-
-  // Initech: small company on a Starter trial that ended 10 days ago → read-only
-  const initech = await prisma.tenant.create({ data: { name: 'Initech Solutions LLP', slug: 'initech', state: 'KA' } });
-  await prisma.$transaction((tx) => createTenantDefaults(tx, initech.id));
-  const iAdmin = await prisma.employee.create({ data: { tenantId: initech.id, code: 'EMP001', firstName: 'Bill', lastName: 'Lumbergh', email: 'admin@initech.com', joiningDate: addDays(today, -60) } });
-  await prisma.user.create({ data: { tenantId: initech.id, email: 'admin@initech.com', passwordHash, role: 'COMPANY_ADMIN', employeeId: iAdmin.id } });
-  await prisma.subscription.create({ data: { tenantId: initech.id, planId: plan.starter.id, status: 'TRIALING', trialEndsAt: addDays(today, -10) } });
-
   console.log(`\nSeed complete: ${people.length} employees. Company users sign in at http://acme.localhost:5173, super admin at http://localhost:5173. Password: ${PASSWORD}`);
   console.table([
     { role: 'Super Admin (platform)', email: 'superadmin@hrms.local' },
@@ -265,7 +225,6 @@ async function main() {
     { role: 'MERN Head (employee login)', email: 'lead@acme.com' },
     { role: 'MERN Team Lead', email: 'teamlead@acme.com' },
     { role: 'Employee (MERN)', email: 'employee@acme.com' },
-    { role: 'Initech admin (expired trial, read-only) @ initech.localhost', email: 'admin@initech.com' },
   ]);
 }
 

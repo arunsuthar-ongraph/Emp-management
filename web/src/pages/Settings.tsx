@@ -21,8 +21,8 @@ export default function Settings() {
 
   return (
     <>
-      <PageHeader title="Company Settings" />
-      <Card bordered={false} style={{ maxWidth: 820 }}>
+      <PageHeader title="Company settings" />
+      <Card style={{ maxWidth: 820 }}>
         <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)}>
           <Row gutter={12}>
             <Col xs={24} sm={16}><Form.Item name="name" label="Company name" rules={[{ required: true }]}><Input /></Form.Item></Col>

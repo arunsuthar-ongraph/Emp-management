@@ -6,7 +6,6 @@ import { Permissions } from '../common/auth';
 import { P } from '../common/permissions';
 import { createTenantDefaults } from '../common/tenant-defaults';
 import { todayIST } from '../common/dates';
-import { BillingService } from '../billing/billing.service';
 
 const RESERVED = ['www', 'app', 'api', 'admin', 'mail', 'static', 'platform'];
 
@@ -19,7 +18,6 @@ class CreateTenantDto {
   @IsNotEmpty() lastName: string;
   @IsEmail() email: string;
   @MinLength(6) password: string;
-  @IsOptional() @IsString() planId?: string; // trial plan (default: Growth)
 }
 
 class StatusDto {
@@ -28,11 +26,11 @@ class StatusDto {
 
 @Injectable()
 export class PlatformService {
-  constructor(private prisma: PrismaService, private billing: BillingService) {}
+  constructor(private prisma: PrismaService) {}
 
   tenants() {
     return this.prisma.tenant.findMany({
-      include: { _count: { select: { employees: true, users: true, payrollRuns: true } }, subscription: { include: { plan: { select: { name: true, code: true } } } } },
+      include: { _count: { select: { employees: true, users: true, payrollRuns: true } } },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -63,7 +61,6 @@ export class PlatformService {
         },
       });
       await tx.user.create({ data: { tenantId: tenant.id, email, passwordHash, role: 'COMPANY_ADMIN', employeeId: employee.id } });
-      await this.billing.startTrial(tenant.id, dto.planId, tx);
       return tenant;
     });
   }

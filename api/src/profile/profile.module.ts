@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { mkdirSync, unlink } from 'fs';
 import { diskStorage } from 'multer';
 import { join } from 'path';
+import { UPLOAD_ROOT } from '../common/paths';
 import * as bcrypt from 'bcryptjs';
 import { IsNotEmpty, Matches, MinLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
@@ -16,7 +17,7 @@ class ProfileDto {
   @Matches(PHONE, { message: 'Enter a valid phone number' }) phone: string;
 }
 
-const AVATAR_DIR = join(__dirname, '..', '..', 'uploads', 'avatars');
+const AVATAR_DIR = join(UPLOAD_ROOT, 'avatars');
 const AVATAR_TYPES: Record<string, string> = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 mkdirSync(AVATAR_DIR, { recursive: true });

@@ -6,7 +6,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser, CurrentUser, Public, tenantSlugFrom } from '../common/auth';
 import { ROLE_PERMISSIONS } from '../common/permissions';
 import { HierarchyService } from '../common/hierarchy';
-import { BillingService } from '../billing/billing.service';
 
 class LoginDto {
   @IsEmail() email: string;
@@ -15,7 +14,7 @@ class LoginDto {
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService, private jwt: JwtService, private hierarchy: HierarchyService, private billing: BillingService) {}
+  constructor(private prisma: PrismaService, private jwt: JwtService, private hierarchy: HierarchyService) {}
 
   /** Company subdomain → its users only. Root domain → platform super admin only. */
   async login(dto: LoginDto, slug: string | null) {
@@ -67,8 +66,6 @@ export class AuthService {
       permissions: ROLE_PERMISSIONS[user.role],
       // Leads people (reporting manager or department head) → sees approvals and team views
       isLead: await this.hierarchy.isLead(user.tenantId || '', user.employeeId),
-      // Plan, enabled modules and access state (full / grace / read-only) for banners and menus
-      subscription: user.tenantId ? await this.billing.access(user.tenantId) : null,
       tenant: user.tenant ? { id: user.tenant.id, name: user.tenant.name, slug: user.tenant.slug, state: user.tenant.state } : null,
       employee: user.employee
         ? {

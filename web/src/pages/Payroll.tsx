@@ -77,8 +77,8 @@ function RunDrawer({ id, onClose }: { id: string | null; onClose: () => void }) 
           <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
             <Col xs={12} md={6}><Card size="small"><Statistic title="Employees" value={run.employeeCount} /></Card></Col>
             <Col xs={12} md={6}><Card size="small"><Statistic title="Gross" value={money(run.totalGross)} /></Card></Col>
-            <Col xs={12} md={6}><Card size="small"><Statistic title="Deductions" value={money(run.totalDeductions)} valueStyle={{ color: '#ef4444' }} /></Card></Col>
-            <Col xs={12} md={6}><Card size="small"><Statistic title="Net payable" value={money(run.totalNet)} valueStyle={{ color: '#10b981' }} /></Card></Col>
+            <Col xs={12} md={6}><Card size="small"><Statistic title="Deductions" value={money(run.totalDeductions)} /></Card></Col>
+            <Col xs={12} md={6}><Card size="small"><Statistic title="Net payable" value={money(run.totalNet)} valueStyle={{ fontWeight: 600 }} /></Card></Col>
           </Row>
           <Table
             rowKey="id"
@@ -126,7 +126,7 @@ function Runs() {
   });
 
   return (
-    <Card bordered={false} extra={<Button type="primary" icon={<PlayCircleOutlined />} onClick={() => setOpen(true)}>Run Payroll</Button>}>
+    <Card extra={<Button type="primary" icon={<PlayCircleOutlined />} onClick={() => setOpen(true)}>Run payroll</Button>}>
       <Table
         rowKey="id"
         loading={isLoading}
@@ -144,7 +144,7 @@ function Runs() {
           { title: 'Employer cost (PF/ESI)', dataIndex: 'totalEmployer', render: money, align: 'right' },
         ]}
       />
-      <Modal title="Run Payroll" open={open} onCancel={() => setOpen(false)} onOk={() => create.mutate()} okText="Calculate" confirmLoading={create.isPending}>
+      <Modal title="Run payroll" open={open} onCancel={() => setOpen(false)} onOk={() => create.mutate()} okText="Calculate" confirmLoading={create.isPending}>
         <Typography.Paragraph type="secondary">
           Salaries are calculated from each employee's CTC, prorated by paid days (attendance + leave). PF, ESI, Professional Tax and TDS (new regime) are applied.
         </Typography.Paragraph>
@@ -169,22 +169,22 @@ function Calculator() {
   return (
     <Row gutter={[16, 16]}>
       <Col xs={24} lg={8}>
-        <Card bordered={false} title={<><CalculatorOutlined /> CTC Calculator</>}>
+        <Card title={<><CalculatorOutlined /> CTC Calculator</>}>
           <Typography.Text>Annual CTC (₹)</Typography.Text>
           <InputNumber style={{ width: '100%', margin: '6px 0 16px' }} size="large" min={0} step={50000} value={ctc} onChange={(v) => setCtc(Number(v) || 0)}
             formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
           <Typography.Text>Work state (Professional Tax)</Typography.Text>
           <Select style={{ width: '100%', marginTop: 6 }} value={state} onChange={setState} options={states.map((x: any) => ({ value: x.code, label: x.name }))} />
           {p && (
-            <Card size="small" style={{ marginTop: 16, background: '#ecfdf5' }}>
-              <Statistic title="Monthly take-home" value={money(p.net)} valueStyle={{ color: '#059669' }} />
+            <Card size="small" style={{ marginTop: 16, background: 'var(--brand-soft)', borderColor: 'transparent' }}>
+              <Statistic title="Monthly take-home" value={money(p.net)} valueStyle={{ fontWeight: 600 }} />
             </Card>
           )}
         </Card>
       </Col>
       <Col xs={24} lg={16}>
         {s && p && (
-          <Card bordered={false} title="Monthly breakup">
+          <Card title="Monthly breakup">
             <Descriptions bordered size="small" column={{ xs: 1, sm: 2 }}>
               <Descriptions.Item label="Monthly CTC">{money(s.monthlyCtc)}</Descriptions.Item>
               <Descriptions.Item label="Gross salary">{money(s.gross)}</Descriptions.Item>
@@ -208,8 +208,8 @@ export default function Payroll() {
     <>
       <PageHeader title="Payroll" />
       <Tabs items={[
-        { key: 'runs', label: 'Payroll Runs', children: <Runs /> },
-        { key: 'calc', label: 'Salary Calculator', children: <Calculator /> },
+        { key: 'runs', label: 'Payroll runs', children: <Runs /> },
+        { key: 'calc', label: 'Salary calculator', children: <Calculator /> },
       ]} />
     </>
   );

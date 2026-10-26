@@ -12,8 +12,8 @@ export default function Payslips() {
 
   return (
     <>
-      <PageHeader title="My Payslips" />
-      <Card bordered={false}>
+      <PageHeader title="My payslips" />
+      <Card>
         <Table
           rowKey="id"
           loading={isLoading}

@@ -70,7 +70,7 @@ function AvatarEditor({ url, name }: { url?: string | null; name?: string }) {
 
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
-      <Avatar size={96} src={url || undefined} style={{ background: '#4f46e5', fontSize: 38 }}>{name?.charAt(0).toUpperCase()}</Avatar>
+      <Avatar size={96} src={url || undefined} style={{ background: 'var(--brand-soft)', color: 'var(--brand)', fontSize: 38 }}>{name?.charAt(0).toUpperCase()}</Avatar>
       <div style={{ marginTop: 10 }}>
         <Space>
           <Upload
@@ -162,10 +162,10 @@ export default function Profile() {
 
   return (
     <>
-      <PageHeader title="My Profile" />
+      <PageHeader title="My profile" />
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={7}>
-          <Card bordered={false} loading={isLoading} style={{ textAlign: 'center' }}>
+          <Card loading={isLoading} style={{ textAlign: 'center' }}>
             <AvatarEditor url={acc?.avatarUrl} name={name} />
             <Typography.Title level={4} style={{ margin: '12px 0 4px' }}>{name}</Typography.Title>
             {emp && <Typography.Text type="secondary">{[emp.designation, emp.department].filter(Boolean).join(' · ')}</Typography.Text>}
@@ -181,7 +181,7 @@ export default function Profile() {
           </Card>
         </Col>
         <Col xs={24} lg={17}>
-          <Card bordered={false} loading={isLoading}>
+          <Card loading={isLoading}>
             <Tabs
               items={[
                 ...(emp

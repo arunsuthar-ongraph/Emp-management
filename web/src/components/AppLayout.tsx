@@ -1,39 +1,90 @@
 import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Avatar, Dropdown, Grid, Layout, Menu, Space, Tag, Typography } from 'antd';
+import { Avatar, Dropdown, Grid, Layout, Menu, MenuProps, Segmented, Space, Tooltip, Typography } from 'antd';
 import {
   ApartmentOutlined,
   BankOutlined,
   CalendarOutlined,
   ClockCircleOutlined,
   DashboardOutlined,
+  DesktopOutlined,
   FileTextOutlined,
   GiftOutlined,
   LogoutOutlined,
+  MoonOutlined,
   SettingOutlined,
+  SunOutlined,
   TeamOutlined,
   UserOutlined,
   WalletOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../auth';
-import { ROLE_COLOR, ROLE_LABEL } from '../api';
+import { ROLE_LABEL } from '../api';
+import { ThemeMode, useThemeMode } from '../theme';
 
 const { Sider, Header, Content } = Layout;
 
-const MENU = [
-  { key: '/', label: 'Dashboard', icon: <DashboardOutlined />, show: (c: Check) => c.tenant },
-  { key: '/tenants', label: 'Companies', icon: <BankOutlined />, show: (c: Check) => c.can('platform.admin') },
-  { key: '/employees', label: 'Employees', icon: <TeamOutlined />, show: (c: Check) => c.can('employee.read') },
-  { key: '/organization', label: 'Organization', icon: <ApartmentOutlined />, show: (c: Check) => c.can('org.write') },
-  { key: '/leave', label: 'Leave', icon: <CalendarOutlined />, show: (c: Check) => c.can('leave.apply') },
-  { key: '/attendance', label: 'Attendance', icon: <ClockCircleOutlined />, show: (c: Check) => c.can('attendance.self') },
-  { key: '/holidays', label: 'Holidays', icon: <GiftOutlined />, show: (c: Check) => c.tenant },
-  { key: '/payroll', label: 'Payroll', icon: <WalletOutlined />, show: (c: Check) => c.can('payroll.manage') },
-  { key: '/payslips', label: 'My Payslips', icon: <FileTextOutlined />, show: (c: Check) => c.can('payslip.self') },
-  { key: '/settings', label: 'Settings', icon: <SettingOutlined />, show: (c: Check) => c.can('settings.write') },
+type Check = { can: (p: string) => boolean; tenant: boolean };
+type Item = { key: string; label: string; icon: JSX.Element; show: (c: Check) => boolean };
+
+/** Navigation grouped by the job people come to do. */
+const NAV: { group: string; items: Item[] }[] = [
+  {
+    group: '',
+    items: [
+      { key: '/', label: 'Dashboard', icon: <DashboardOutlined />, show: (c) => c.tenant },
+      { key: '/tenants', label: 'Companies', icon: <BankOutlined />, show: (c) => c.can('platform.admin') },
+    ],
+  },
+  {
+    group: 'People',
+    items: [
+      { key: '/employees', label: 'Employees', icon: <TeamOutlined />, show: (c) => c.can('employee.read') },
+      { key: '/organization', label: 'Organization', icon: <ApartmentOutlined />, show: (c) => c.can('org.write') },
+    ],
+  },
+  {
+    group: 'Time off & attendance',
+    items: [
+      { key: '/leave', label: 'Leave', icon: <CalendarOutlined />, show: (c) => c.can('leave.apply') },
+      { key: '/attendance', label: 'Attendance', icon: <ClockCircleOutlined />, show: (c) => c.can('attendance.self') },
+      { key: '/holidays', label: 'Holidays', icon: <GiftOutlined />, show: (c) => c.tenant },
+    ],
+  },
+  {
+    group: 'Pay',
+    items: [
+      { key: '/payroll', label: 'Payroll', icon: <WalletOutlined />, show: (c) => c.can('payroll.manage') },
+      { key: '/payslips', label: 'My payslips', icon: <FileTextOutlined />, show: (c) => c.can('payslip.self') },
+    ],
+  },
+  {
+    group: 'Admin',
+    items: [
+      { key: '/settings', label: 'Company settings', icon: <SettingOutlined />, show: (c) => c.can('settings.write') },
+    ],
+  },
 ];
 
-type Check = { can: (p: string) => boolean; tenant: boolean };
+export function ThemeToggle({ size = 'middle' }: { size?: 'small' | 'middle' }) {
+  const { mode, setMode } = useThemeMode();
+  const opt = (value: ThemeMode, icon: JSX.Element, label: string) => ({
+    value,
+    label: (
+      <Tooltip title={label}>
+        <span aria-label={label}>{icon}</span>
+      </Tooltip>
+    ),
+  });
+  return (
+    <Segmented
+      size={size}
+      value={mode}
+      onChange={(v) => setMode(v as ThemeMode)}
+      options={[opt('light', <SunOutlined />, 'Light'), opt('dark', <MoonOutlined />, 'Dark'), opt('system', <DesktopOutlined />, 'Match system')]}
+    />
+  );
+}
 
 export default function AppLayout() {
   const { user, can, logout } = useAuth();
@@ -43,29 +94,36 @@ export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
 
   const check: Check = { can, tenant: !!user?.tenant };
-  const items = MENU.filter((m) => m.show(check)).map(({ key, label, icon }) => ({ key, label, icon }));
+  const items: MenuProps['items'] = NAV.flatMap(({ group, items }): NonNullable<MenuProps['items']> => {
+    const visible = items.filter((i) => i.show(check)).map(({ key, label, icon }) => ({ key, label, icon }));
+    if (!visible.length) return [];
+    return group && !collapsed ? [{ type: 'group' as const, key: group, label: group, children: visible }] : visible;
+  });
   const name = user?.employee?.name || user?.email || '';
+  const subtitle = user?.employee?.designation || ROLE_LABEL[user!.role];
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
+        className="app-sider"
+        theme="light"
         breakpoint="lg"
-        collapsedWidth={screens.xs ? 0 : 80}
+        collapsedWidth={screens.xs ? 0 : 72}
         collapsible
         collapsed={collapsed}
         onCollapse={setCollapsed}
-        width={230}
+        width={236}
         style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'auto' }}
       >
-        <div className="logo">
-          <span style={{ background: '#4f46e5', borderRadius: 8, width: 32, height: 32, display: 'grid', placeItems: 'center' }}>P</span>
-          {!collapsed && 'PeopleDesk'}
+        <div className="brand">
+          <span className="brand-mark" aria-hidden>P</span>
+          {!collapsed && <span className="brand-name">PeopleDesk</span>}
         </div>
         <Menu
-          theme="dark"
           mode="inline"
           selectedKeys={[pathname]}
           items={items}
+          style={{ borderInlineEnd: 0, padding: '8px 8px 16px' }}
           onClick={(e) => {
             navigate(e.key);
             if (screens.xs) setCollapsed(true);
@@ -73,32 +131,41 @@ export default function AppLayout() {
         />
       </Sider>
       <Layout>
-        <Header style={{ padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #eef0f4' }}>
-          <Typography.Text strong style={{ fontSize: 16 }} ellipsis>
-            {user?.tenant?.name || 'Platform Administration'}
+        <Header className="app-header">
+          <Typography.Text strong style={{ fontSize: 15, minWidth: 0 }} ellipsis>
+            {user?.tenant?.name || 'Platform administration'}
           </Typography.Text>
-          <Dropdown
-            menu={{
-              items: [
-                { key: 'email', label: user?.email, disabled: true },
-                { type: 'divider' },
-                { key: 'profile', label: 'My Profile', icon: <UserOutlined />, onClick: () => navigate('/profile') },
-                { key: 'logout', label: 'Logout', icon: <LogoutOutlined />, danger: true, onClick: logout },
-              ],
-            }}
-          >
-            <Space style={{ cursor: 'pointer' }}>
-              <Avatar src={user?.avatarUrl || undefined} style={{ background: '#4f46e5' }}>{name.charAt(0).toUpperCase()}</Avatar>
-              {screens.md && (
-                <>
-                  <span>{name}</span>
-                  <Tag color={ROLE_COLOR[user!.role]}>{ROLE_LABEL[user!.role]}</Tag>
-                </>
-              )}
-            </Space>
-          </Dropdown>
+          <Space size={16}>
+            {screens.sm && <ThemeToggle size="small" />}
+            <Dropdown
+              trigger={['click']}
+              menu={{
+                items: [
+                  { key: 'email', label: user?.email, disabled: true },
+                  { type: 'divider' },
+                  { key: 'profile', label: 'My profile', icon: <UserOutlined />, onClick: () => navigate('/profile') },
+                  ...(!screens.sm
+                    ? [{ key: 'theme', label: <ThemeToggle size="small" />, disabled: true } as const]
+                    : []),
+                  { key: 'logout', label: 'Sign out', icon: <LogoutOutlined />, danger: true, onClick: logout },
+                ],
+              }}
+            >
+              <button type="button" aria-label="Account menu" style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Avatar src={user?.avatarUrl || undefined} style={{ background: 'var(--brand)', color: 'var(--on-brand)' }}>
+                  {name.charAt(0).toUpperCase()}
+                </Avatar>
+                {screens.md && (
+                  <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
+                    <span style={{ fontWeight: 500, color: 'var(--ink)' }}>{name}</span>
+                    <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{subtitle}</span>
+                  </span>
+                )}
+              </button>
+            </Dropdown>
+          </Space>
         </Header>
-        <Content style={{ padding: screens.xs ? 16 : 24 }}>
+        <Content style={{ padding: screens.xs ? 16 : '24px 28px', maxWidth: 1440, width: '100%' }}>
           <Outlet />
         </Content>
       </Layout>
