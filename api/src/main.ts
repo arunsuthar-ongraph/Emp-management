@@ -20,6 +20,19 @@ async function bootstrap() {
     log.warn(`${problem}; fine for local development only`);
   }
 
+  const db = process.env.DATABASE_URL?.trim() || '';
+  if (process.env.NODE_ENV === 'production') {
+    if (!db) {
+      throw new Error(
+        'DATABASE_URL is empty. On Railway, set it on this service as a reference to your database, e.g. ${{Postgres.DATABASE_URL}}, ' +
+          'where "Postgres" is the exact name of your database service (an unknown name resolves to an empty value).',
+      );
+    }
+    if (/@(localhost|127\.0\.0\.1)[:/]/.test(db)) {
+      throw new Error('DATABASE_URL points at localhost. On Railway, use a reference to your database service, e.g. ${{Postgres.DATABASE_URL}}.');
+    }
+  }
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.setGlobalPrefix('api');
   app.enableCors();
