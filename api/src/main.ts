@@ -10,9 +10,14 @@ import { hasWebBuild, UPLOAD_ROOT, WEB_DIST } from './common/paths';
 
 async function bootstrap() {
   const log = new Logger('Bootstrap');
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-    if (process.env.NODE_ENV === 'production') throw new Error('JWT_SECRET must be set to a random string of at least 32 characters');
-    log.warn('JWT_SECRET is missing or short; fine for local development only');
+  const secret = process.env.JWT_SECRET?.trim() || '';
+  if (secret.length < 32) {
+    // Says whether it's missing or too short, never the value itself
+    const problem = secret ? `JWT_SECRET is only ${secret.length} characters` : 'JWT_SECRET is not set';
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`${problem}. Set it on this service to a random string of at least 32 characters (e.g. the output of: openssl rand -hex 32).`);
+    }
+    log.warn(`${problem}; fine for local development only`);
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
